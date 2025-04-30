@@ -1,0 +1,31 @@
+# Ignore virtual environments
+venv/
+.env/
+
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# macOS metadata
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Output directories
+output/
+saida/
+*.pdf
+*.docx
+*.epub
+
+# VSCode and other IDEs
+.vscode/
+.idea/
+*.swp
+
+# System-wide ignore
+Thumbs.db
