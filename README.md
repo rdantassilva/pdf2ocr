@@ -43,13 +43,13 @@ brew install --cask calibre
 > If `ebook-convert` is not available after installing Calibre, you need to manually add it to your PATH:
 >
 > ```bash
-> export PATH="/Applications/calibre.app/Contents/MacOS:$PATH"
+> export PATH="$PATH:/Applications/calibre.app/Contents/MacOS"
 > ```
 >
 > To make it permanent, add it to your shell config file (`~/.zshrc` or `~/.bash_profile`):
 >
 > ```bash
-> echo 'export PATH="/Applications/calibre.app/Contents/MacOS:$PATH"' >> ~/.zshrc
+> echo 'export PATH="$PATH:/Applications/calibre.app/Contents/MacOS"' >> ~/.zshrc
 > source ~/.zshrc
 > ```
 
@@ -96,7 +96,3 @@ python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --
 ```bash
 python3 pdf2ocr.py ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
 ```
-
-## License
-
-MIT License - see the LICENSE file for details.
