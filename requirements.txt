@@ -1,0 +1,6 @@
+pillow
+pytesseract
+tqdm
+pdf2image
+python-docx
+reportlab
