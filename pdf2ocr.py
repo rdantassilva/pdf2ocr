@@ -3,11 +3,6 @@
 """
 Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB.
 
-Dependencies:
-- Python 3.8+
-- pip install pillow pytesseract tqdm pdf2image python-docx reportlab
-- sudo apt install tesseract-ocr poppler-utils calibre
-
 Description of Libraries:
 - 📜 PIL/Pillow: Image processing (open, convert and enhance images for OCR)
 - 🔍 pytesseract: Python interface for Tesseract OCR (text recognition in images)
@@ -34,13 +29,13 @@ Important Notes:
 - The script creates separate folders for each output type (docx, pdf, epub)
 """
 
-import os
-import re
-import time
-import subprocess
-import shutil
-import argparse
-import platform
+import os          # Interact with the file system (paths, folders, environment)
+import re          # Handle regular expressions for text cleanup and filtering
+import time        # Measure elapsed time for performance tracking
+import subprocess  # Run external commands like `ebook-convert`
+import shutil      # High-level file operations (copy, move, check binaries)
+import argparse    # Parse command-line arguments provided by the user
+import platform    # Detect the operating system for platform-specific handling
 from PIL import Image, ImageFilter, ImageOps  # Image manipulation
 from pdf2image import convert_from_path      # PDF to image conversion
 from pytesseract import image_to_string      # Text recognition (OCR)
