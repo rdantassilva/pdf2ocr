@@ -109,6 +109,6 @@ MIT
 | Command       | Description                                                        |
 |---------------|--------------------------------------------------------------------|
 | `make venv`   | Create and activate a Python virtual environment                   |
-| `make install`| Install dependencies from `requirements.txt`                       |
+| `make install`| Install pdf2ocr globally                                           |
 | `make run`    | Run the script with example parameters                             |
 | `make clean`  | Remove cache, logs, and generated output                           |
