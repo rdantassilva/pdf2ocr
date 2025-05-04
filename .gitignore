@@ -37,6 +37,7 @@ debian/*.substvars
 debian/*.log
 debian/build/
 debian/tmp/
+pdf2ocr_*
 
 # Debian package outputs
 *.deb
