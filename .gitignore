@@ -28,24 +28,6 @@ saida/
 .idea/
 *.swp
 
-# Debian build files
-debian/files
-debian/.debhelper/
-debian/debhelper-build-stamp
-debian/*.debhelper.log
-debian/*.substvars
-debian/*.log
-debian/build/
-debian/tmp/
-pdf2ocr_*
-
-# Debian package outputs
-*.deb
-*.changes
-*.dsc
-*.buildinfo
-*.upload
-
 # Python build artifacts
 build/
 dist/
