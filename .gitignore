@@ -1,31 +1,52 @@
-# Ignore virtual environments
+# Virtual environments
 venv/
 .env/
 
-# Bytecode and cache
+# Python cache and bytecode
 __pycache__/
 *.py[cod]
 *.pyo
 
-# macOS metadata
+# OS metadata
 .DS_Store
+Thumbs.db
 
-# Logs and temporary files
+# Logs and temp files
 *.log
 *.tmp
 *.bak
 
-# Output directories
+# Program outputs
 output/
 saida/
 *.pdf
 *.docx
 *.epub
 
-# VSCode and other IDEs
+# IDE files
 .vscode/
 .idea/
 *.swp
 
-# System-wide ignore
-Thumbs.db
+# Debian build files
+debian/files
+debian/.debhelper/
+debian/debhelper-build-stamp
+debian/*.debhelper.log
+debian/*.substvars
+debian/*.log
+debian/build/
+debian/tmp/
+
+# Debian package outputs
+*.deb
+*.changes
+*.dsc
+*.buildinfo
+*.upload
+
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+*.egg
