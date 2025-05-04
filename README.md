@@ -111,5 +111,4 @@ MIT
 | `make venv`   | Create and activate a Python virtual environment                   |
 | `make install`| Install dependencies from `requirements.txt`                       |
 | `make run`    | Run the script with example parameters                             |
-| `make deb`    | Generate a .deb package using the `build_deb.sh` script            |
 | `make clean`  | Remove cache, logs, and generated output                           |

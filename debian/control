@@ -1,9 +1,0 @@
-Package: pdf2ocr
-Version: 1.0.0
-Architecture: all
-Maintainer: Rafael Dantas <rdantas.zip@gmail.com>, Otto Batista <tombatista@gmail.com>
-Depends: python3, tesseract-ocr, poppler-utils, python3-pil, python3-pytesseract,
-         python3-tqdm, python3-pdf2image, python3-docx, python3-reportlab
-Description: Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB
- This tool processes PDF files through OCR to generate searchable documents
- in DOCX, PDF and EPUB formats.
