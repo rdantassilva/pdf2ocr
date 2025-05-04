@@ -356,8 +356,8 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
         log_file.write(f"Total execution time: {total_duration:.2f} seconds\n")
         log_file.close()
 
-if __name__ == "__main__":
-    # Argument parser configuration
+def parse_arguments():
+    """Configure and parse command line arguments"""
     parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, PDF and EPUB.")
     parser.add_argument("source_dir", help="Input folder with PDF files")
     parser.add_argument("--dest-dir", help="Output folder (optional, defaults to input folder)", default=None)
@@ -369,8 +369,11 @@ if __name__ == "__main__":
         help="Display only final conversion summary (short output mode)"
     )
     parser.add_argument("--logfile", help="Path to log file (optional)")
+    return parser.parse_args()
 
-    args = parser.parse_args()
+def main():
+    """Main entry point for the CLI"""
+    args = parse_arguments()
     check_dependencies(generate_epub=args.epub)
     source_dir = os.path.expanduser(args.source_dir)
     dest_dir = os.path.expanduser(args.dest_dir) if args.dest_dir else source_dir
@@ -389,3 +392,7 @@ if __name__ == "__main__":
         summary_output=args.summary_output,
         log_path=args.logfile
     )
+
+if __name__ == "__main__":
+    main()
+

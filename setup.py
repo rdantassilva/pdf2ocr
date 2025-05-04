@@ -5,19 +5,17 @@ setup(
     version="1.0.0",
     packages=find_packages(),
     install_requires=[
-        "pillow",
-        "pytesseract",
-        "tqdm",
-        "pdf2image",
-        "python-docx",
-        "reportlab"
+        'pytesseract>=0.3.10',
+        'pdf2image>=1.16.0',
+        'python-docx>=0.8.11',
+        'reportlab>=4.0.0',
+        'tqdm>=4.45.0',
+        'Pillow>=9.0.0'
     ],
     entry_points={
-        "console_scripts": [
-            "pdf2ocr=pdf2ocr.main:main"
-        ]
+        'console_scripts': [
+            'pdf2ocr=pdf2ocr.cli:main',
+        ],
     },
-    author="Your Name",
-    description="OCR PDF to DOCX, searchable PDF and EPUB.",
-    license="MIT"
+    python_requires='>=3.6',
 )

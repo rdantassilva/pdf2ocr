@@ -5,7 +5,7 @@ venv:
 	source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
 install:
-	pip install -r requirements.txt
+	pip install .
 
 run:
 	python3 pdf2ocr/main.py ./example_pdfs --pdf --docx --epub --dest-dir ./output
