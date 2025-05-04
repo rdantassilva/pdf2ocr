@@ -2,7 +2,9 @@
 
 Python script to apply OCR to PDF files and generate output in DOCX, searchable PDF, and EPUB formats.
 
-## Features
+---
+
+## 📄 Features
 
 - 📄 Extracts text from scanned PDFs using Tesseract OCR
 - 📘 Outputs DOCX and searchable PDFs
@@ -10,7 +12,32 @@ Python script to apply OCR to PDF files and generate output in DOCX, searchable 
 - 🧼 Cleans unwanted characters while preserving Portuguese accents
 - 📈 Shows progress bars and summary logs
 
-## System Requirements
+---
+
+## 🚀 Quick Install & Usage
+
+### Install globally
+
+After cloning the repository, you can install `pdf2ocr` globally to use it as a command-line tool:
+
+```bash
+make install
+# or manually:
+# pip install .
+```
+
+### Run
+
+Use the command:
+
+```bash
+pdf2ocr ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
+```
+
+---
+
+
+## 🧱 System Requirements
 
 ### Ubuntu/Debian (APT)
 
@@ -44,8 +71,6 @@ brew install --cask calibre
 > pip3 install --upgrade pip
 > pip3 install -r requirements.txt
 > ```
->
-> This avoids issues with Homebrew-protected Python environments (PEP 668).
 
 > 📌 **Important (macOS only):**  
 > If `ebook-convert` is not available after installing Calibre, you need to manually add it to your PATH:
@@ -54,22 +79,24 @@ brew install --cask calibre
 > export PATH="$PATH:/Applications/calibre.app/Contents/MacOS"
 > ```
 >
-> To make it permanent, add it to your shell config file (`~/.zshrc` or `~/.bash_profile`):
+> To make it permanent:
 >
 > ```bash
 > echo 'export PATH="$PATH:/Applications/calibre.app/Contents/MacOS"' >> ~/.zshrc
 > source ~/.zshrc
 > ```
 
-Then check:
+Check Calibre installation:
 
 ```bash
 ebook-convert --version
 ```
 
-## Python Setup
+---
 
-Create and activate a virtual environment:
+## 🐍 Python Setup (for development)
+
+To use in a virtual environment:
 
 ```bash
 python3 -m venv venv
@@ -77,13 +104,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Usage
+---
+
+## ⚙️ Command Line Options
 
 ```bash
-python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --logfile log.txt
+pdf2ocr source_folder --docx --pdf --epub --dest-dir output_folder --logfile log.txt
 ```
-
-### Options
 
 - `source_folder`: Folder with input PDF files
 - `--dest-dir`: Output folder (default is the input folder)
@@ -93,22 +120,27 @@ python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --
 - `--short-output`: Show only final summary output
 - `--logfile`: Path to save detailed log output (UTF-8)
 
-## Example
+---
+
+## 📌 Example
 
 ```bash
-python3 pdf2ocr.py ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
+pdf2ocr ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
 ```
 
-## License
+---
+
+## 🛠️ Makefile Commands
+
+| Command         | Description                                                        |
+|-----------------|--------------------------------------------------------------------|
+| `make venv`     | Create and activate a Python virtual environment                   |
+| `make install`  | Install pdf2ocr globally                                           |
+| `make run`      | Run the script with example parameters                             |
+| `make clean`    | Remove cache, logs, and generated output                           |
+
+---
+
+## 📄 License
 
 MIT
-
-
-## Makefile Commands
-
-| Command       | Description                                                        |
-|---------------|--------------------------------------------------------------------|
-| `make venv`   | Create and activate a Python virtual environment                   |
-| `make install`| Install pdf2ocr globally                                           |
-| `make run`    | Run the script with example parameters                             |
-| `make clean`  | Remove cache, logs, and generated output                           |
