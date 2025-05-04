@@ -11,4 +11,4 @@ run:
 	python3 pdf2ocr/main.py ./example_pdfs --pdf --docx --epub --dest-dir ./output
 
 clean:
-	rm -rf __pycache__ *.deb output *.log
+	rm -rf __pycache__ output *.log pdf2ocr.egg-info/
