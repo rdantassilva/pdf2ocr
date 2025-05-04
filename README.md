@@ -2,6 +2,14 @@
 
 Python script to apply OCR to PDF files and generate output in DOCX, searchable PDF, and EPUB formats.
 
+## Features
+
+- 📄 Extracts text from scanned PDFs using Tesseract OCR
+- 📘 Outputs DOCX and searchable PDFs
+- 📚 Converts to EPUB (via Calibre)
+- 🧼 Cleans unwanted characters while preserving Portuguese accents
+- 📈 Shows progress bars and summary logs
+
 ## System Requirements
 
 ### Ubuntu/Debian (APT)
@@ -22,6 +30,11 @@ sudo yum install tesseract poppler-utils calibre
 
 ### macOS (Homebrew)
 
+```bash
+brew install tesseract poppler
+brew install --cask calibre
+```
+
 > 💡 **Tip for macOS/Homebrew users:**  
 > It's strongly recommended to use a virtual environment to avoid system restrictions:
 >
@@ -33,11 +46,6 @@ sudo yum install tesseract poppler-utils calibre
 > ```
 >
 > This avoids issues with Homebrew-protected Python environments (PEP 668).
-
-```bash
-brew install tesseract poppler
-brew install --cask calibre
-```
 
 > 📌 **Important (macOS only):**  
 > If `ebook-convert` is not available after installing Calibre, you need to manually add it to your PATH:
@@ -53,15 +61,15 @@ brew install --cask calibre
 > source ~/.zshrc
 > ```
 
-Then check it:
+Then check:
 
 ```bash
 ebook-convert --version
 ```
 
-## Python
+## Python Setup
 
-It's recommended to use a virtual environment:
+Create and activate a virtual environment:
 
 ```bash
 python3 -m venv venv
@@ -69,16 +77,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Installing dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
 ## Usage
 
 ```bash
-python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --short-output
+python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --logfile log.txt
 ```
 
 ### Options
@@ -96,3 +98,18 @@ python3 pdf2ocr.py source_folder --docx --pdf --epub --dest-dir output_folder --
 ```bash
 python3 pdf2ocr.py ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
 ```
+
+## License
+
+MIT
+
+
+## Makefile Commands
+
+| Command       | Description                                                        |
+|---------------|--------------------------------------------------------------------|
+| `make venv`   | Create and activate a Python virtual environment                   |
+| `make install`| Install dependencies from `requirements.txt`                       |
+| `make run`    | Run the script with example parameters                             |
+| `make deb`    | Generate a .deb package using the `build_deb.sh` script            |
+| `make clean`  | Remove cache, logs, and generated output                           |

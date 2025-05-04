@@ -1,0 +1,17 @@
+Source: pdf2ocr
+Section: utils
+Priority: optional
+Maintainer: Rafael Dantas <rdantas.zip@gmail.com>, Otto Batista <tombatista@gmail.com>
+Build-Depends: debhelper-compat (= 13), dh-python, python3-all, python3-setuptools
+Standards-Version: 4.5.1
+Homepage: https://github.com/seu-usuario/pdf2ocr
+
+Package: pdf2ocr
+Architecture: all
+Depends: ${python3:Depends}, ${misc:Depends},
+         tesseract-ocr, poppler-utils, python3-pil, python3-pytesseract,
+         python3-tqdm, python3-pdf2image, python3-docx, python3-reportlab,
+         calibre (optional)
+Description: Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB
+ This tool processes PDF files through OCR to generate searchable documents
+ in DOCX, PDF and EPUB formats.
