@@ -358,7 +358,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
 
 def parse_arguments():
     """Configure and parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, PDF and EPUB.")
+    parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB")
     parser.add_argument("source_dir", help="Input folder with PDF files")
     parser.add_argument("--dest-dir", help="Output folder (optional, defaults to input folder)", default=None)
     parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
