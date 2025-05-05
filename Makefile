@@ -2,7 +2,7 @@
 
 venv:
 	python3 -m venv pdf2ocr
-	source venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+	source pdf2ocr/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
 install:
 	pip install .
