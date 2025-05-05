@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
 
+with open("README.md", "r", encoding="utf-8") as f:
+    long_description = f.read()
+
 setup(
     name="pdf2ocr",
     version="1.0.0",
@@ -20,5 +23,8 @@ setup(
     python_requires='>=3.6',
     author="Rafael Dantas",
     description="OCR PDF to Docx, searchable PDFs and EPUB.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     license="MIT"
 )
+
