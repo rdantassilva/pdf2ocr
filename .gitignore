@@ -1,6 +1,7 @@
 # Virtual environments
 venv/
 .env/
+venv_pdf2ocr/
 
 # Python cache and bytecode
 __pycache__/
