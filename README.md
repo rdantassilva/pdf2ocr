@@ -1,6 +1,6 @@
 # pdf2ocr
 
-Python script to apply OCR to PDF files and generate output in DOCX, searchable PDF, and EPUB formats.
+Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, and EPUB formats.
 
 ---
 
