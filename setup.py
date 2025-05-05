@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pdf2ocr=pdf2ocr.cli:main',
+            'pdf2ocr=pdf2ocr:main',
         ],
     },
     python_requires='>=3.6',

@@ -1,1 +1,0 @@
-# pdf2ocr package
