@@ -14,8 +14,11 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'pdf2ocr=pdf2ocr:main',
+            'pdf2ocr=pdf2ocr.main:main',
         ],
     },
     python_requires='>=3.6',
+    author="Rafael Dantas",
+    description="OCR PDF to Docx, searchable PDFs and EPUB.",
+    license="MIT"
 )
