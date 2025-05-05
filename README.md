@@ -18,12 +18,10 @@ Python script to apply OCR to PDF files and generate output in DOCX, searchable 
 
 ### Install globally
 
-After cloning the repository, you can install `pdf2ocr` globally to use it as a command-line tool:
+You can install pdf2ocr and use it as a command-line tool by simply:
 
 ```bash
-make install
-# or manually:
-# pip install .
+pip install jumpcutter 
 ```
 
 ### Run
