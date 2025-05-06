@@ -207,7 +207,7 @@ def convert_docx_to_epub(docx_path, epub_path):
         return False, time.perf_counter() - start, e.stderr
 
 def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_pdf, 
-                      generate_epub, quiet=False, summary_output=False, log_path=None):
+                      generate_epub, generate_html, quiet=False, summary_output=False, log_path=None):
     """Main function that orchestrates the entire conversion process"""
     
     # Enable DOCX automatically if EPUB is requested
@@ -242,6 +242,12 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
         os.makedirs(epub_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ EPUB folder created - {epub_dir}/\n")
+            log_file.flush()
+    if generate_html:
+        html_dir = os.path.join(output_folder, 'html')
+        os.makedirs(html_dir, exist_ok=True)
+        if log_file:
+            log_file.write(f"✅ HMLT folder created - {html_dir}/\n")
             log_file.flush()
 
     # List and sort PDF files in input folder
@@ -303,6 +309,14 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
                     print(f"    - 📄 OCR PDF created in {times['pdf']:.2f} seconds")
                 if log_file:
                     log_file.write(f"✅ OCR PDF created: {times['pdf']:.2f}s\n")
+                    log_file.flush()
+
+            if generate_html:
+                html_path = os.path.join(output_folder, 'html', base_name + '.html')
+                html_text = "".join(f"<p>{page.strip()}</p>\n" for page in page_texts)
+                save_as_html(html_text, html_path)
+                if log_file:
+                    log_file.write(f"✅ HTML saved: {html_path}\n")
                     log_file.flush()
 
             # Generate EPUB if requested
@@ -446,6 +460,32 @@ def process_layout_pdf_only(source_dir, dest_dir,
         log_file.close()
 
 
+def save_as_html(text, output_path):
+    """Saves extracted text to an HTML file"""
+    start = time.perf_counter()
+    try:
+        html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OCR Output</title>
+</head>
+<body>
+<pre>
+{text}
+</pre>
+</body>
+</html>"""
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html_content)
+
+        elapsed = time.perf_counter() - start
+        print(f"✅ HTML saved to {output_path} ({elapsed:.2f}s)")
+    except Exception as e:
+        print(f"❌ Failed to save HTML: {e}")
+
+
 
 def parse_arguments():
     """Configure and parse command line arguments"""
@@ -454,6 +494,7 @@ def parse_arguments():
     parser.add_argument("--dest-dir", help="Output folder (optional, defaults to input folder)", default=None)
     parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
     parser.add_argument("--pdf", action="store_true", help="Generate OCR-processed PDF files")
+    parser.add_argument("--html", action="store_true", help="Generate html files")
     parser.add_argument("--epub", action="store_true", help="Generate EPUB files (auto-enables --docx if needed)")
     parser.add_argument("--preserve-layout", action="store_true", help="Preserve original document layout (PDF only)")
     parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
@@ -470,7 +511,7 @@ def main():
     source_dir = os.path.expanduser(args.source_dir)
     dest_dir = os.path.expanduser(args.dest_dir) if args.dest_dir else source_dir
 
-    if not (args.docx or args.pdf or args.epub):
+    if not (args.docx or args.pdf or args.epub or args.html):
         print("⚠️ You must select at least one option: --docx, --pdf, --epub")
         exit(1)
 
@@ -478,8 +519,8 @@ def main():
     # Choose Tesseract config based on --preserve-layout
     if args.preserve_layout:
         if args.docx or args.epub:
-            print("\n⚠️  Warn: --preserve-layout forces PDF output only; disabling DOCX and EPUB.")
-        args.pdf, args.docx, args.epub = True, False, False
+            print("\n⚠️  Warning: --preserve-layout is only compatible with PDF output. Other formats have been disabled.")
+        args.pdf, args.docx, args.epub, args.html = True, False, False, False
         tconfig = tesseract_layout_config
     else:
         tconfig = tesseract_default_config
@@ -494,7 +535,6 @@ def main():
             summary=args.summary_output,
             log_path=args.logfile
         )
-        return
 
     # Normal multi‐format flow
     process_pdfs_with_ocr(
@@ -503,6 +543,7 @@ def main():
         args.docx,
         args.pdf,
         args.epub,
+        args.html,
         quiet=args.quiet,
         summary_output=args.summary_output,
         log_path=args.logfile
