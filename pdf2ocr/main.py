@@ -1,4 +1,4 @@
-#coding:utf-8
+# coding:utf-8
 
 """
 Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB.
@@ -29,89 +29,83 @@ Important Notes:
 - The script creates separate folders for each output type (docx, pdf, epub)
 """
 
-import os          # Interact with the file system (paths, folders, environment)
-import re          # Handle regular expressions for text cleanup and filtering
-import time        # Measure elapsed time for performance tracking
-import subprocess  # Run external commands like `ebook-convert`
-import shutil      # High-level file operations (copy, move, check binaries)
-import argparse    # Parse command-line arguments provided by the user
-import platform    # Detect the operating system for platform-specific handling
-from PIL import Image, ImageFilter, ImageOps  # Image manipulation
-from pdf2image import convert_from_path      # PDF to image conversion
-from pytesseract import image_to_string      # Text recognition (OCR)
-from tqdm import tqdm                        # Progress bar
-from docx import Document                    # Word document manipulation
-from reportlab.pdfgen import canvas          # PDF generation
-from reportlab.lib.pagesizes import A4       # Standard page size
-from reportlab.lib.units import cm           # Measurement units
+import os           # File system operations
+import re           # Regular expressions for text cleaning
+import time         # Performance timing
+import subprocess   # Execute external commands
+import shutil       # High-level file and binary operations
+import argparse     # Command-line argument parsing
+import platform     # Detect operating system
+from PIL import Image, ImageFilter, ImageOps      # Image preprocessing
+from pdf2image import convert_from_path           # PDF to image conversion
+from pytesseract import image_to_string           # OCR text extraction
+from tqdm import tqdm                             # Progress bars
+from docx import Document                         # Word document creation
+from reportlab.pdfgen import canvas               # PDF generation
+from reportlab.lib.pagesizes import A4            # Standard page size
+from reportlab.lib.units import cm                # Measurement units
 
-# Advanced Tesseract configuration for maximum accuracy
-# --oem 3: Uses LSTM neural engine (best accuracy)
-# --psm 1: Automatic page segmentation mode
-# -l por: Portuguese language
-tesseract_custom_config = r'--oem 3 --psm 1 -l por'
+# Two Tesseract configurations:
+# - default: fast and accurate, does not preserve layout
+# - layout-aware: tries to maintain original blocks and columns
+tesseract_default_config = r'--oem 3 --psm 1 -l por'
+tesseract_layout_config  = r'--oem 1 --psm 11 -l por'
 
 def detect_package_manager():
-    """Detects the system's package manager"""
+    """Detect the system's package manager."""
     system = platform.system()
     if system == "Darwin":
         return "brew"
     elif system == "Linux":
         if shutil.which("apt"):
             return "apt"
-        elif shutil.which("dnf"):
+        if shutil.which("dnf"):
             return "dnf"
-        elif shutil.which("yum"):
+        if shutil.which("yum"):
             return "yum"
     return None
 
 def check_dependencies(generate_epub=False):
-    """Checks if all system dependencies are installed and suggests install commands"""
+    """Check for required system commands and suggest install commands."""
     missing = []
-
-    # Check essential system commands
     if shutil.which('tesseract') is None:
         missing.append('tesseract (OCR)')
     if shutil.which('pdftoppm') is None:
         missing.append('poppler-utils (pdftoppm for PDF to image conversion)')
     if generate_epub and shutil.which('ebook-convert') is None:
-        missing.append('calibre (ebook-convert to create EPUB)')
+        missing.append('calibre (ebook-convert for EPUB)')
 
     if missing:
         print("\n❌ Missing dependencies detected:")
         for item in missing:
             print(f"   - {item}")
-
-        package_manager = detect_package_manager()
-
-        print("\nℹ️ Install required packages using the following command:\n")
-
-        if package_manager == "apt":
-            print("   sudo apt install tesseract-ocr poppler-utils calibre\n")
-        elif package_manager == "dnf":
-            print("   sudo dnf install tesseract poppler-utils calibre\n")
-        elif package_manager == "yum":
-            print("   sudo yum install tesseract poppler-utils calibre\n")
-        elif package_manager == "brew":
+        pm = detect_package_manager()
+        print("\nℹ️ Install required packages using:")
+        if pm == "apt":
+            print("   sudo apt install tesseract-ocr poppler-utils calibre")
+        elif pm == "dnf":
+            print("   sudo dnf install tesseract poppler-utils calibre")
+        elif pm == "yum":
+            print("   sudo yum install tesseract poppler-utils calibre")
+        elif pm == "brew":
             print("   brew install tesseract poppler")
-            print("   brew install --cask calibre\n")
-            print("📌 If 'ebook-convert' is not found, add Calibre to your PATH:\n")
+            print("   brew install --cask calibre")
+            print("\n📌 If 'ebook-convert' is not found, add Calibre to your PATH:")
             print("   echo 'export PATH=\"$PATH:/Applications/calibre.app/Contents/MacOS\"' >> ~/.zshrc")
-            print("   source ~/.zshrc\n")
+            print("   source ~/.zshrc")
         else:
-            print("❓ Unrecognized system. Please install the missing dependencies manually.\n")
-
+            print("   Please install the missing dependencies manually.")
         exit(1)
 
 def preprocess_image(img):
-    """Pre-processes image to improve OCR quality"""
-    img = img.convert('L')          # Convert to grayscale
-    img = ImageOps.autocontrast(img)  # Auto contrast enhancement
-    img = img.filter(ImageFilter.MedianFilter())  # Noise reduction filter
+    """Convert image to grayscale, enhance contrast, and reduce noise."""
+    img = img.convert('L')
+    img = ImageOps.autocontrast(img)
+    img = img.filter(ImageFilter.MedianFilter())
     return img
 
 def clean_text_portuguese(text):
-    """Cleans text by removing unwanted (non-ASCII) non-Portuguese special characters, preserving Portuguese common caracters"""
+    """Remove unwanted symbols while preserving Portuguese accents."""
     allowed = (
         'a-zA-Z0-9'
         'áéíóúàãõâêôç'
@@ -121,276 +115,179 @@ def clean_text_portuguese(text):
     )
     return re.sub(f'[^{allowed}]', '', text)
 
-def extract_text_from_pdf(pdf_source_path, quiet=False):
-    """Converts PDF to text using OCR"""
-    pages = convert_from_path(pdf_source_path, dpi=400)  # Convert PDF to images (400 DPI)
-    final_text = ""
+def extract_text_from_pdf(pdf_path, quiet=False, tesseract_config=None):
+    """Run OCR on each page image and return concatenated text and page texts."""
+    pages = convert_from_path(pdf_path, dpi=400)
+    full_text = ""
     page_texts = []
-    
-    # Process each page with progress bar
-    ocr_start = time.perf_counter()
-    for page_img in tqdm(pages, desc="Extracting text (OCR)...", 
-                        ascii=False, ncols=75, disable=quiet):
-        page_img = preprocess_image(page_img)  # Pre-processing
-        text = image_to_string(page_img, config=tesseract_custom_config)  # Extract text
-        text = clean_text_portuguese(text) # clean non-ASCII preserving Portuguese caracters
+    start = time.perf_counter()
+
+    for img in tqdm(pages, desc="Extracting text (OCR)...", disable=quiet, ncols=75):
+        img = preprocess_image(img)
+        text = image_to_string(img, config=tesseract_config)
+        text = clean_text_portuguese(text)
         page_texts.append(text)
-        final_text += text + "\n\n"
-    
-    ocr_time = time.perf_counter() - ocr_start
-    return final_text, page_texts, ocr_time
+        full_text += text + "\n\n"
 
-def save_as_docx(text, output_path):
-    """Saves extracted text to a DOCX file"""
-    start = time.perf_counter()
-    document = Document()
-    
-    # Add each line as a paragraph in the document
+    return full_text, page_texts, time.perf_counter() - start
+
+def save_as_docx(text, path):
+    """Save OCR text to a DOCX file."""
+    t0 = time.perf_counter()
+    doc = Document()
     for line in text.split('\n'):
-        line = line.strip()
-        if line:
-            document.add_paragraph(line)
-    
-    document.save(output_path)
-    return time.perf_counter() - start
+        if line.strip():
+            doc.add_paragraph(line.strip())
+    doc.save(path)
+    return time.perf_counter() - t0
 
-def save_as_pdf(text_pages, output_path, filename):
-    """Generates a new PDF with OCR-processed text"""
-    start = time.perf_counter()
-    c = canvas.Canvas(output_path, pagesize=A4)
-    width, height = A4
-
-    # Add text page by page
-    for idx, page_text in enumerate(text_pages, start=1):
-        x = 2 * cm  # Left margin
-        y = height - 3 * cm  # Top margin
-        
-        # Page header
+def save_as_pdf(page_texts, path, name):
+    """Create a searchable PDF from OCR page texts."""
+    t0 = time.perf_counter()
+    c = canvas.Canvas(path, pagesize=A4)
+    w, h = A4
+    for i, pt in enumerate(page_texts, start=1):
+        x, y = 2*cm, h - 3*cm
         c.setFont("Helvetica-Bold", 10)
-        c.drawCentredString(width / 2, height - 1 * cm, 
-                          f"OCR - {filename} - Page {idx}")
-        
-        # Main text
+        c.drawCentredString(w/2, h - 1*cm, f"OCR - {name} - Page {i}")
         c.setFont("Helvetica", 10)
-        for line in page_text.split('\n'):
-            line = line.strip()
-            if line:
-                c.drawString(x, y, line)
-                y -= 12  # Line spacing
-                if y < 2 * cm:  # Check page end
+        for line in pt.split('\n'):
+            if line.strip():
+                c.drawString(x, y, line.strip())
+                y -= 12
+                if y < 2*cm:
                     c.showPage()
-                    break
+                    y = h - 3*cm
         c.showPage()
-    
     c.save()
-    return time.perf_counter() - start
+    return time.perf_counter() - t0
 
 def convert_docx_to_epub(docx_path, epub_path):
-    """Converts DOCX to EPUB using Calibre"""
-    start = time.perf_counter()
+    """Convert a DOCX file to EPUB using Calibre's ebook-convert."""
+    t0 = time.perf_counter()
     try:
-        result = subprocess.run(
+        res = subprocess.run(
             ["ebook-convert", docx_path, epub_path],
-            capture_output=True,
-            text=True,
-            check=True
+            capture_output=True, text=True, check=True
         )
-        return True, time.perf_counter() - start, result.stdout
+        return True, time.perf_counter() - t0, res.stdout
     except subprocess.CalledProcessError as e:
-        return False, time.perf_counter() - start, e.stderr
+        return False, time.perf_counter() - t0, e.stderr
 
-def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_pdf, 
-                      generate_epub, quiet=False, summary_output=False, log_path=None):
-    """Main function that orchestrates the entire conversion process"""
-    
-    # Enable DOCX automatically if EPUB is requested
-    if generate_epub and not generate_docx:
-        if not quiet and not summary_output:
-            print("ℹ️ Note: EPUB requires DOCX as prerequisite. Enabling DOCX generation automatically.")
-        generate_docx = True
-    
-    # Configure log file if specified
-    log_file = None
-    if log_path:
-        log_file = open(log_path, "w", encoding="utf-8", buffering=1)
-        log_file.write("=== Process Started ===\n\n")
-        log_file.flush()
+def process_pdfs_with_ocr(input_dir, output_dir,
+                          to_docx, to_pdf, to_epub,
+                          tesseract_config,
+                          quiet=False, summary=False, logfile=None):
+    """Coordinate OCR, file generation, and logging for all PDFs in a folder."""
+    if to_epub and not to_docx:
+        if not quiet and not summary:
+            print("ℹ️ EPUB requires DOCX; enabling DOCX generation.")
+        to_docx = True
 
-    # Create output folders as needed
-    os.makedirs(output_folder, exist_ok=True)
-    if generate_docx:
-        docx_dir = os.path.join(output_folder, 'docx')
-        os.makedirs(docx_dir, exist_ok=True)
-        if log_file:
-            log_file.write(f"✅ DOCX folder created - {docx_dir}/\n")
-            log_file.flush()
-    if generate_pdf:
-        pdf_dir = os.path.join(output_folder, 'pdf')
-        os.makedirs(pdf_dir, exist_ok=True)
-        if log_file:
-            log_file.write(f"✅ PDF folder created - {pdf_dir}/\n")
-            log_file.flush()
-    if generate_epub:
-        epub_dir = os.path.join(output_folder, 'epub')
-        os.makedirs(epub_dir, exist_ok=True)
-        if log_file:
-            log_file.write(f"✅ EPUB folder created - {epub_dir}/\n\n")
-            log_file.flush()
+    log = None
+    if logfile:
+        log = open(logfile, "w", encoding="utf-8", buffering=1)
+        log.write("=== Process Started ===\n\n")
 
-    # List and sort PDF files in input folder
-    pdf_files = [f for f in os.listdir(input_folder) if f.lower().endswith('.pdf')]
-    pdf_files.sort()
+    os.makedirs(output_dir, exist_ok=True)
+    if to_docx: os.makedirs(os.path.join(output_dir, 'docx'), exist_ok=True)
+    if to_pdf:  os.makedirs(os.path.join(output_dir, 'pdf'), exist_ok=True)
+    if to_epub: os.makedirs(os.path.join(output_dir, 'epub'), exist_ok=True)
 
-    total = len(pdf_files)
-    if total == 0:
-        if not quiet:
-            print("⚠️ No PDF files found!")
+    files = sorted(f for f in os.listdir(input_dir) if f.lower().endswith('.pdf'))
+    if not files:
+        if not quiet: print("⚠️ No PDF files found!")
         return
 
-    # Process each PDF file
-    total_start = time.perf_counter()
-    for idx, filename in enumerate(pdf_files, start=1):
-        file_start = time.perf_counter()
-        
-        if not quiet and not summary_output:
-            print(f"\n📄 Processing file {idx:02d} of {total:02d}: {filename}")
-
-        if log_file:
-            log_file.write(f"\n--- Processing file {idx:02d} of {total:02d}: {filename} ---\n")
-            log_file.flush()
+    start_all = time.perf_counter()
+    for idx, fname in enumerate(files, start=1):
+        if not quiet and not summary:
+            print(f"\n📄 Processing file {idx:02d}/{len(files)}: {fname}")
+        if log: log.write(f"\n--- Processing {idx:02d}/{len(files)}: {fname} ---\n")
 
         try:
-            pdf_source_path = os.path.join(input_folder, filename)
-            base_name = os.path.splitext(filename)[0]
-            
-            # Step 1: Text extraction with OCR
-            final_text, page_texts, ocr_time = extract_text_from_pdf(pdf_source_path, quiet or summary_output)
-            
-            if not quiet and not summary_output:
-                print(f"\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds")
-            
-            if log_file:
-                log_file.write(f"✅ OCR completed: {ocr_time:.2f}s\n")
-                log_file.flush()
+            path = os.path.join(input_dir, fname)
+            base = os.path.splitext(fname)[0]
+            text, pages, ocr_t = extract_text_from_pdf(path, quiet, tesseract_config)
+            if not quiet and not summary:
+                print(f"🔹 OCR done in {ocr_t:.2f}s")
+            if log: log.write(f"✅ OCR: {ocr_t:.2f}s\n")
 
-            # Step 2: Output file generation
-            times = {}
-            if not quiet and not summary_output:
-                print("\n🔹 Creating output files:")
+            if to_docx:
+                out = os.path.join(output_dir, 'docx', base + '.docx')
+                dt = save_as_docx(text, out)
+                if not quiet and not summary: print(f"    - DOCX in {dt:.2f}s")
+                if log: log.write(f"✅ DOCX: {dt:.2f}s\n")
 
-            # Generate DOCX if requested
-            if generate_docx:
-                docx_path = os.path.join(output_folder, 'docx', base_name + '.docx')
-                times['docx'] = save_as_docx(final_text, docx_path)
-                if not quiet and not summary_output:
-                    print(f"    - 📄 DOCX created in {times['docx']:.2f} seconds")
-                if log_file:
-                    log_file.write(f"✅ DOCX created: {times['docx']:.2f}s\n")
-                    log_file.flush()
+            if to_pdf:
+                out = os.path.join(output_dir, 'pdf', base + '_ocr.pdf')
+                dt = save_as_pdf(pages, out, base)
+                if not quiet and not summary: print(f"    - PDF in {dt:.2f}s")
+                if log: log.write(f"✅ PDF: {dt:.2f}s\n")
 
-            # Generate PDF if requested
-            if generate_pdf:
-                pdf_path = os.path.join(output_folder, 'pdf', base_name + '_ocr.pdf')
-                times['pdf'] = save_as_pdf(page_texts, pdf_path, base_name)
-                if not quiet and not summary_output:
-                    print(f"    - 📄 OCR PDF created in {times['pdf']:.2f} seconds")
-                if log_file:
-                    log_file.write(f"✅ OCR PDF created: {times['pdf']:.2f}s\n")
-                    log_file.flush()
-
-            # Generate EPUB if requested
-            if generate_epub:
-                epub_path = os.path.join(output_folder, 'epub', base_name + '.epub')
-                success, times['epub'], output = convert_docx_to_epub(docx_path, epub_path)
-                
-                if success:
-                    if not quiet and not summary_output:
-                        print(f"    - 📄 EPUB created in {times['epub']:.2f} seconds")
-                    if log_file:
-                        log_file.write(f"✅ EPUB created: {times['epub']:.2f}s\n")
-                        log_file.write("\n=> ebook-convert output:\n\n")
-                        log_file.write(output + "\n")
-                        log_file.flush()
-                else:
-                    if not quiet and not summary_output:
-                        print(f"    - ❌ Error creating EPUB ({times['epub']:.2f}s)")
-                    if log_file:
-                        log_file.write(f"❌ Error creating EPUB ({times['epub']:.2f}s): {output}\n")
-                        log_file.flush()
-
-            # Record total file processing time
-            total_file_time = time.perf_counter() - file_start
-            if not quiet and not summary_output:
-                print(f"\n🔹 Total time for file: {total_file_time:.2f} seconds")
-
-            if log_file:
-                log_file.write(f"⏱️ Total file time: {total_file_time:.2f} seconds\n")
-                #log_file.write(f"--- File completed: {filename} ---\n")
-                log_file.write(f"--- File completed ---\n")
-                log_file.flush()
+            if to_epub:
+                epub_out = os.path.join(output_dir, 'epub', base + '.epub')
+                ok, dt, msg = convert_docx_to_epub(
+                    os.path.join(output_dir, 'docx', base + '.docx'),
+                    epub_out
+                )
+                status = "✅" if ok else "❌"
+                if not quiet and not summary:
+                    print(f"    - {status} EPUB in {dt:.2f}s")
+                if log: log.write(f"{status} EPUB: {dt:.2f}s\n")
 
         except Exception as e:
-            # Error handling with time tracking
-            total_file_time = time.perf_counter() - file_start
-            if not quiet and not summary_output:
-                print(f"\n❌ Error processing {filename}: {e}")
-                print(f"🔹 Elapsed time: {total_file_time:.2f} seconds")
-            if log_file:
-                log_file.write(f"❌ Unexpected error: {e}\n")
-                log_file.write(f"⏱️ Elapsed time: {total_file_time:.2f} seconds\n")
-                log_file.write(f"--- File finished: {filename} ---\n\n")
-                log_file.flush()
+            if not quiet and not summary: print(f"❌ Error: {e}")
+            if log: log.write(f"❌ Error: {e}\n")
 
-    # Final process summary
-    total_end = time.perf_counter()
-    total_duration = total_end - total_start
-    
-    if not quiet:
-        print("\n🎯 Conversion summary:")
-        print(f"📄 Total files found: {total}")
-        print(f"⏱️ Total execution time: {total_duration:.2f} seconds")
-
-    if log_file:
-        log_file.write(f"\n=== Process completed ===\n\n")
-        log_file.write(f"Total processed files: {total}\n")
-        log_file.write(f"Total execution time: {total_duration:.2f} seconds\n")
-        log_file.close()
-
-def parse_arguments():
-    """Configure and parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB")
-    parser.add_argument("source_dir", help="Input folder with PDF files")
-    parser.add_argument("--dest-dir", help="Output folder (optional, defaults to input folder)", default=None)
-    parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
-    parser.add_argument("--pdf", action="store_true", help="Generate OCR-processed PDF files")
-    parser.add_argument("--epub", action="store_true", help="Generate EPUB files (auto-enables --docx if needed)")
-    parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
-    parser.add_argument("--short-output", "--summary-output", dest="summary_output", action="store_true",
-        help="Display only final conversion summary (short output mode)"
-    )
-    parser.add_argument("--logfile", help="Path to log file (optional)")
-    return parser.parse_args()
+    total_t = time.perf_counter() - start_all
+    if not quiet: print(f"\n🎯 Completed in {total_t:.2f}s")
+    if log:
+        log.write(f"\n=== Completed in {total_t:.2f}s ===\n")
+        log.close()
 
 def main():
-    """Main entry point for the CLI"""
-    args = parse_arguments()
+    parser = argparse.ArgumentParser(
+        description="Script for OCR on PDFs generating DOCX, PDF and EPUB."
+    )
+    parser.add_argument("source_dir", help="Input folder with PDF files")
+    parser.add_argument("--dest-dir", "--output-dir",
+                        dest="dest_dir", help="Output folder (defaults to input folder)",
+                        default=None)
+    parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
+    parser.add_argument("--pdf", action="store_true", help="Generate OCR-processed PDF files")
+    parser.add_argument("--epub", action="store_true",
+                        help="Generate EPUB files (requires --docx)")
+    parser.add_argument("--quiet", action="store_true", help="Silence output")
+    parser.add_argument("--short-output", "--summary-output", dest="summary",
+                        action="store_true", help="Show only summary output")
+    parser.add_argument("--logfile", help="Path to log file (optional)")
+    parser.add_argument("--preserve-layout", action="store_true",
+                        help="Preserve original document layout during OCR")
+
+    args = parser.parse_args()
     check_dependencies(generate_epub=args.epub)
-    source_dir = os.path.expanduser(args.source_dir)
-    dest_dir = os.path.expanduser(args.dest_dir) if args.dest_dir else source_dir
+
+    source = os.path.expanduser(args.source_dir)
+    dest   = os.path.expanduser(args.dest_dir) if args.dest_dir else source
+
+    # Choose appropriate Tesseract config
+    tct_cfg = (
+        tesseract_layout_config if args.preserve_layout
+        else tesseract_default_config
+    )
 
     if not (args.docx or args.pdf or args.epub):
         print("⚠️ You must select at least one option: --docx, --pdf, --epub")
         exit(1)
 
     process_pdfs_with_ocr(
-        source_dir,
-        dest_dir,
-        args.docx,
-        args.pdf,
-        args.epub,
+        source, dest,
+        args.docx, args.pdf, args.epub,
+        tct_cfg,
         quiet=args.quiet,
-        summary_output=args.summary_output,
-        log_path=args.logfile
+        summary=args.summary,
+        logfile=args.logfile
     )
 
 if __name__ == "__main__":
