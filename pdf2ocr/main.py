@@ -13,6 +13,7 @@ Description of Libraries:
 - 🏷️ tesseract-ocr: OCR engine (optical character recognition)
 - 🖼️ poppler-utils: PDF manipulation tools (includes pdftoppm)
 - 📚 calibre: E-book management suite (provides ebook-convert)
+- 🐍 PyPDF2: Merge per-page searchable PDFs into one (layout-preserving PDF mode)
 
 Conversion Flow:
 1. 📄 pdf2image uses `pdftoppm` to convert PDFs to images
@@ -30,20 +31,23 @@ Important Notes:
 """
 
 import os          # Interact with the file system (paths, folders, environment)
+import io          # Handle in-memory binary streams for PDF merging (Used in --preserve-mode)
 import re          # Handle regular expressions for text cleanup and filtering
 import time        # Measure elapsed time for performance tracking
 import subprocess  # Run external commands like `ebook-convert`
 import shutil      # High-level file operations (copy, move, check binaries)
 import argparse    # Parse command-line arguments provided by the user
 import platform    # Detect the operating system for platform-specific handling
-from PIL import Image, ImageFilter, ImageOps  # Image manipulation
-from pdf2image import convert_from_path      # PDF to image conversion
-from pytesseract import image_to_string      # Text recognition (OCR)
-from tqdm import tqdm                        # Progress bar
-from docx import Document                    # Word document manipulation
-from reportlab.pdfgen import canvas          # PDF generation
-from reportlab.lib.pagesizes import A4       # Standard page size
-from reportlab.lib.units import cm           # Measurement units
+from PIL import Image, ImageFilter, ImageOps        # Image manipulation
+from pdf2image import convert_from_path             # PDF to image conversion
+from pytesseract import image_to_string, image_to_pdf_or_hocr    # Text recognition (OCR)
+from tqdm import tqdm                                       # Progress bar
+from docx import Document                                    # Word document manipulation
+from reportlab.pdfgen import canvas                         # PDF generation
+from reportlab.lib.pagesizes import A4                       # Standard page size
+from reportlab.lib.units import cm                          # Measurement units
+from PyPDF2       import PdfMerger                          # Merge multiple PDF byte streams into a single PDF document
+
 
 # Two Tesseract configurations:
 # - default: fast and accurate, does not preserve layout
@@ -128,12 +132,14 @@ def extract_text_from_pdf(pdf_source_path, quiet=False):
     final_text = ""
     page_texts = []
     
+    tesseract_custom_config=tesseract_default_config
+
     # Process each page with progress bar
     ocr_start = time.perf_counter()
     for page_img in tqdm(pages, desc="Extracting text (OCR)...", 
                         ascii=False, ncols=75, disable=quiet):
         page_img = preprocess_image(page_img)  # Pre-processing
-        text = image_to_string(page_img, config=tesseract_config) # Extract text
+        text = image_to_string(page_img, config=tesseract_custom_config)  # Extract text
         text = clean_text_portuguese(text) # clean non-ASCII preserving Portuguese caracters
         page_texts.append(text)
         final_text += text + "\n\n"
@@ -200,10 +206,8 @@ def convert_docx_to_epub(docx_path, epub_path):
     except subprocess.CalledProcessError as e:
         return False, time.perf_counter() - start, e.stderr
 
-def process_pdfs_with_ocr(source_dir, dest_dir,
-                          generate_docx, generate_pdf, generate_epub,
-                          tesseract_config,
-                          quiet=False, summary_output=False, log_path=None):
+def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_pdf, 
+                      generate_epub, quiet=False, summary_output=False, log_path=None):
     """Main function that orchestrates the entire conversion process"""
     
     # Enable DOCX automatically if EPUB is requested
@@ -237,7 +241,7 @@ def process_pdfs_with_ocr(source_dir, dest_dir,
         epub_dir = os.path.join(output_folder, 'epub')
         os.makedirs(epub_dir, exist_ok=True)
         if log_file:
-            log_file.write(f"✅ EPUB folder created - {epub_dir}/\n\n")
+            log_file.write(f"✅ EPUB folder created - {epub_dir}/\n")
             log_file.flush()
 
     # List and sort PDF files in input folder
@@ -266,8 +270,8 @@ def process_pdfs_with_ocr(source_dir, dest_dir,
             pdf_source_path = os.path.join(input_folder, filename)
             base_name = os.path.splitext(filename)[0]
             
-            # pass the tesseract_config through to the OCR function
-            text, pages, ocr_time = extract_text_from_pdf(src, quiet or summary_output, tesseract_config)
+            # Step 1: Text extraction with OCR
+            final_text, page_texts, ocr_time = extract_text_from_pdf(pdf_source_path, quiet or summary_output)
             
             if not quiet and not summary_output:
                 print(f"\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds")
@@ -359,6 +363,90 @@ def process_pdfs_with_ocr(source_dir, dest_dir,
         log_file.write(f"Total execution time: {total_duration:.2f} seconds\n")
         log_file.close()
 
+def process_layout_pdf_only(source_dir, dest_dir,
+                            tesseract_config,
+                            quiet=False, summary=False, log_path=None):
+    """
+    Generate layout-preserving searchable PDFs for each PDF in source_dir,
+    merging per-page PDF outputs via PyPDF2, with output and log style matching standard flow.
+    """
+
+    # Setup log
+    log_file = None
+    if log_path:
+        log_file = open(log_path, "w", encoding="utf-8", buffering=1)
+        log_file.write("=== Process Started ===\n\n")
+        pdf_folder = os.path.join(dest_dir, 'pdf')
+        log_file.write(f"✅ PDF folder created - {pdf_folder}\n\n")
+
+    # Prepare output folder
+    os.makedirs(dest_dir, exist_ok=True)
+    pdf_dir = os.path.join(dest_dir, 'pdf')
+    os.makedirs(pdf_dir, exist_ok=True)
+
+    # Gather PDF files
+    files = sorted(f for f in os.listdir(source_dir) if f.lower().endswith('.pdf'))
+    total = len(files)
+    if total == 0:
+        if not quiet:
+            print("⚠️ No PDF files found!")
+        return
+
+    overall_start = time.perf_counter()
+
+    for idx, fname in enumerate(files, start=1):
+        src_path = os.path.join(source_dir, fname)
+        base = os.path.splitext(fname)[0]
+        out_path = os.path.join(pdf_dir, f"{base}_ocr.pdf")
+
+        print(f"\n📄 Processing file {idx:02d} of {total}: {fname}")
+        if log_file:
+            log_file.write(f"--- Processing file {idx:02d} of {total}: {fname} ---\n")
+
+        # OCR each page to a searchable PDF snippet
+        pages = convert_from_path(src_path, dpi=400)
+        print("Extracting text (OCR)...:", end=" ")
+        ocr_start = time.perf_counter()
+        pdf_pages = []
+        for page_img in tqdm(pages, disable=quiet, ncols=75, leave=False):
+            pdf_bytes = image_to_pdf_or_hocr(page_img, extension='pdf', config=tesseract_config)
+            pdf_pages.append(pdf_bytes)
+        ocr_time = time.perf_counter() - ocr_start
+        print(f"\n\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds\n")
+        if log_file:
+            log_file.write(f"✅ OCR completed: {ocr_time:.2f}s\n")
+
+        # Merge all page-PDFs into one
+        print("🔹 Creating output files:")
+        merge_start = time.perf_counter()
+        merger = PdfMerger()
+        for b in pdf_pages:
+            merger.append(io.BytesIO(b))
+        with open(out_path, 'wb') as fout:
+            merger.write(fout)
+        pdf_time = time.perf_counter() - merge_start
+        print(f"    - 📄 OCR PDF created in {pdf_time:.2f} seconds\n")
+        if log_file:
+            log_file.write(f"✅ PDF created: {pdf_time:.2f}s\n\n")
+
+        file_total = ocr_time + pdf_time
+        print(f"🔹 Total time for file: {file_total:.2f} seconds")
+        if log_file:
+            log_file.write("--- File completed ---\n\n")
+
+    overall_time = time.perf_counter() - overall_start
+    print(f"\n🎯 Conversion summary:")
+    print(f"📄 Total files found: {total}")
+    print(f"⏱️ Total execution time: {overall_time:.2f} seconds")
+
+    if log_file:
+        log_file.write("=== Process completed ===\n\n")
+        log_file.write(f"Total processed files: {total}\n")
+        log_file.write(f"Total execution time: {overall_time:.2f}s\n")
+        log_file.close()
+
+
+
 def parse_arguments():
     """Configure and parse command line arguments"""
     parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB")
@@ -367,7 +455,7 @@ def parse_arguments():
     parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
     parser.add_argument("--pdf", action="store_true", help="Generate OCR-processed PDF files")
     parser.add_argument("--epub", action="store_true", help="Generate EPUB files (auto-enables --docx if needed)")
-    parser.add_argument("--preserve-layout", action="store_true", help="Preserve original document layout during OCR")
+    parser.add_argument("--preserve-layout", action="store_true", help="Preserve original document layout (PDF only)")
     parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
     parser.add_argument("--short-output", "--summary-output", dest="summary_output", action="store_true",
         help="Display only final conversion summary (short output mode)"
@@ -386,20 +474,35 @@ def main():
         print("⚠️ You must select at least one option: --docx, --pdf, --epub")
         exit(1)
 
-    # choose Tesseract config based on --preserve-layout
-    tcfg = (
-        tesseract_layout_config
-        if args.preserve_layout
-        else tesseract_default_config
-    )
+    # ─── FORCE PDF‐ONLY IF LAYOUT PRESERVING ───
+    # Choose Tesseract config based on --preserve-layout
+    if args.preserve_layout:
+        if args.docx or args.epub:
+            print("\n⚠️  Warn: --preserve-layout forces PDF output only; disabling DOCX and EPUB.")
+        args.pdf, args.docx, args.epub = True, False, False
+        tconfig = tesseract_layout_config
+    else:
+        tconfig = tesseract_default_config
     
+    # Layout‐preserving mode: only generate searchable PDFs via Tesseract CLI
+    if args.preserve_layout:
+        process_layout_pdf_only(
+            source_dir,
+            dest_dir,
+            tesseract_config=tconfig,
+            quiet=args.quiet,
+            summary=args.summary_output,
+            log_path=args.logfile
+        )
+        return
+
+    # Normal multi‐format flow
     process_pdfs_with_ocr(
         source_dir,
         dest_dir,
         args.docx,
         args.pdf,
         args.epub,
-        tcfg,
         quiet=args.quiet,
         summary_output=args.summary_output,
         log_path=args.logfile
@@ -407,3 +510,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
