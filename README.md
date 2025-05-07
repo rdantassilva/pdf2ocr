@@ -1,4 +1,6 @@
 [![PyPI](https://img.shields.io/pypi/v/pdf2ocr)](https://pypi.org/project/pdf2ocr/)
+[![Coverage Status](https://img.shields.io/badge/coverage-90%25-brightgreen)](https://github.com/rdantassilva/pdf2ocr)
+
 # pdf2ocr
 
 Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML, and EPUB formats.
