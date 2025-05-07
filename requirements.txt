@@ -4,3 +4,4 @@ tqdm
 pdf2image
 python-docx
 reportlab
+PyPDF2
