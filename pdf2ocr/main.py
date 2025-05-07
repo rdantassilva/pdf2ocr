@@ -281,7 +281,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
         html_dir = os.path.join(output_folder, 'html')
         os.makedirs(html_dir, exist_ok=True)
         if log_file:
-            log_file.write(f"✅ HMLT folder created - {html_dir}/\n")
+            log_file.write(f"✅ HTML folder created - {html_dir}/\n")
             log_file.flush()
 
     # List and sort PDF files in input folder
