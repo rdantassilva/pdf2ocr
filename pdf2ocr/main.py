@@ -510,7 +510,7 @@ def process_layout_pdf_only(
             pdf_pages.append(pdf_bytes)
 
         ocr_time = time.perf_counter() - ocr_start
-        print(f"\n\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds\n")
+        print(f"\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds\n")
         if log_file:
             log_file.write(f"✅ OCR completed: {ocr_time:.2f}s\n")
 
