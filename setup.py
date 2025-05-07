@@ -22,7 +22,7 @@ setup(
     },
     python_requires='>=3.6',
     author="Rafael Dantas",
-    description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, and EPUB formats",
+    description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT"
