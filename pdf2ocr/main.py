@@ -34,6 +34,7 @@ import os          # Interact with the file system (paths, folders, environment)
 import io          # Handle in-memory binary streams for PDF merging (Used in --preserve-mode)
 import re          # Handle regular expressions for text cleanup and filtering
 import time        # Measure elapsed time for performance tracking
+import unicodedata
 import subprocess  # Run external commands like `ebook-convert`
 import shutil      # High-level file operations (copy, move, check binaries)
 import argparse    # Parse command-line arguments provided by the user
@@ -150,16 +151,30 @@ def extract_text_from_pdf(pdf_source_path, quiet=False):
 def save_as_docx(text, output_path):
     """Saves extracted text to a DOCX file"""
     start = time.perf_counter()
+    title = os.path.splitext(os.path.basename(output_path))[0].replace('_', ' ')
     document = Document()
-    
+    document.core_properties.title = title
+    document.core_properties.author = "pdf2ocr"
+
     # Add each line as a paragraph in the document
-    for line in text.split('\n'):
-        line = line.strip()
-        if line:
-            document.add_paragraph(line)
+    # for line in text.split('\n'):
+    #     line = line.strip()
+    #     if line:
+    #         document.add_paragraph(line)
+
+    #Preserve paragraphs
+    paragraphs = text.strip().split('\n\n')
+    for para in paragraphs:
+        clean_para = para.strip().replace('\n', ' ')
+        if clean_para:
+            document.add_paragraph(clean_para)
     
     document.save(output_path)
     return time.perf_counter() - start
+
+def remove_accents(texto):
+    return unicodedata.normalize("NFKD", texto).encode("ASCII", "ignore").decode("ASCII")
+
 
 def save_as_pdf(text_pages, output_path, filename):
     """Generates a new PDF with OCR-processed text"""
@@ -167,37 +182,56 @@ def save_as_pdf(text_pages, output_path, filename):
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
 
-    # Add text page by page
     for idx, page_text in enumerate(text_pages, start=1):
         x = 2 * cm  # Left margin
         y = height - 3 * cm  # Top margin
-        
+
         # Page header
         c.setFont("Helvetica-Bold", 10)
-        c.drawCentredString(width / 2, height - 1 * cm, 
-                          f"OCR - {filename} - Page {idx}")
-        
+        header = f"OCR - {filename} - Pag. {idx}"
+        header = remove_accents(header)
+        c.drawCentredString(width / 2, height - 1 * cm, header)
+
         # Main text
         c.setFont("Helvetica", 10)
-        for line in page_text.split('\n'):
-            line = line.strip()
-            if line:
-                c.drawString(x, y, line)
-                y -= 12  # Line spacing
-                if y < 2 * cm:  # Check page end
-                    c.showPage()
-                    break
+        line_height = 12
+
+        #Preserve paragraphs
+        paragraphs = page_text.strip().split('\n\n')
+        for para in paragraphs:
+            lines = para.strip().split('\n')
+            for line in lines:
+                line = line.strip()
+                if line:
+                    c.drawString(x, y, line)
+                    y -= line_height
+                    if y < 2 * cm:  # Check page end
+                        c.showPage()
+                        y = height - 3 * cm
+                        c.setFont("Helvetica", 10)
+            y -= line_height  # Extra space between paragraphs
+
         c.showPage()
-    
+
     c.save()
     return time.perf_counter() - start
+
 
 def convert_docx_to_epub(docx_path, epub_path):
     """Converts DOCX to EPUB using Calibre"""
     start = time.perf_counter()
     try:
+        title = os.path.splitext(os.path.basename(str(epub_path)))[0].replace('_', ' ')
+
         result = subprocess.run(
-            ["ebook-convert", docx_path, epub_path],
+            [
+                "ebook-convert", docx_path, epub_path,
+                '--title', title,
+                '--authors', 'pdf2ocr',
+                '--comments', 'Converted by pdf2ocr',
+                '--language', 'pt',
+                '--level1-toc', "//h:h1"
+            ],
             capture_output=True,
             text=True,
             check=True
@@ -213,14 +247,14 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
     # Enable DOCX automatically if EPUB is requested
     if generate_epub and not generate_docx:
         if not quiet and not summary_output:
-            print("ℹ️ Note: EPUB requires DOCX as prerequisite. Enabling DOCX generation automatically.")
+            print(f"\nℹ️ Note: EPUB requires DOCX as prerequisite. Enabling DOCX generation automatically.")
         generate_docx = True
     
     # Configure log file if specified
     log_file = None
     if log_path:
         log_file = open(log_path, "w", encoding="utf-8", buffering=1)
-        log_file.write("=== Process Started ===\n\n")
+        log_file.write("\n=== Process Started ===\n\n")
         log_file.flush()
 
     # Create output folders as needed
@@ -266,7 +300,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
         file_start = time.perf_counter()
         
         if not quiet and not summary_output:
-            print(f"\n📄 Processing file {idx:02d} of {total:02d}: {filename}")
+            print(f"\n📄 Processing file {idx:02d} of {total:02d}: {filename}\n")
 
         if log_file:
             log_file.write(f"\n--- Processing file {idx:02d} of {total:02d}: {filename} ---\n")
@@ -314,9 +348,9 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
             if generate_html:
                 html_path = os.path.join(output_folder, 'html', base_name + '.html')
                 html_text = "".join(f"<p>{page.strip()}</p>\n" for page in page_texts)
-                save_as_html(html_text, html_path)
+                times['html'] = save_as_html(html_text, html_path)
                 if log_file:
-                    log_file.write(f"✅ HTML saved: {html_path}\n")
+                    log_file.write(f"✅ HTML saved: {times['html']:.2f}s\n")
                     log_file.flush()
 
             # Generate EPUB if requested
@@ -382,23 +416,19 @@ def process_layout_pdf_only(source_dir, dest_dir,
                             quiet=False, summary=False, log_path=None):
     """
     Generate layout-preserving searchable PDFs for each PDF in source_dir,
-    merging per-page PDF outputs via PyPDF2, with output and log style matching standard flow.
+    merging per-page PDF outputs via PyPDF2. Optimized for size by using lower DPI.
     """
 
-    # Setup log
+    os.makedirs(dest_dir, exist_ok=True)
+    pdf_dir = os.path.join(dest_dir, 'pdf_preserved')
+    os.makedirs(pdf_dir, exist_ok=True)
+
     log_file = None
     if log_path:
         log_file = open(log_path, "w", encoding="utf-8", buffering=1)
         log_file.write("=== Process Started ===\n\n")
-        pdf_folder = os.path.join(dest_dir, 'pdf')
-        log_file.write(f"✅ PDF folder created - {pdf_folder}\n\n")
+        log_file.write(f"✅ Preserve-layout PDF folder created - {pdf_dir}\n\n")
 
-    # Prepare output folder
-    os.makedirs(dest_dir, exist_ok=True)
-    pdf_dir = os.path.join(dest_dir, 'pdf')
-    os.makedirs(pdf_dir, exist_ok=True)
-
-    # Gather PDF files
     files = sorted(f for f in os.listdir(source_dir) if f.lower().endswith('.pdf'))
     total = len(files)
     if total == 0:
@@ -417,20 +447,21 @@ def process_layout_pdf_only(source_dir, dest_dir,
         if log_file:
             log_file.write(f"--- Processing file {idx:02d} of {total}: {fname} ---\n")
 
-        # OCR each page to a searchable PDF snippet
-        pages = convert_from_path(src_path, dpi=400)
+        # Use lower DPI to reduce image and PDF size
+        pages = convert_from_path(src_path, dpi=200)
         print("Extracting text (OCR)...:", end=" ")
         ocr_start = time.perf_counter()
         pdf_pages = []
+
         for page_img in tqdm(pages, disable=quiet, ncols=75, leave=False):
             pdf_bytes = image_to_pdf_or_hocr(page_img, extension='pdf', config=tesseract_config)
             pdf_pages.append(pdf_bytes)
+
         ocr_time = time.perf_counter() - ocr_start
         print(f"\n\n🔹 Text extraction (OCR): completed in {ocr_time:.2f} seconds\n")
         if log_file:
             log_file.write(f"✅ OCR completed: {ocr_time:.2f}s\n")
 
-        # Merge all page-PDFs into one
         print("🔹 Creating output files:")
         merge_start = time.perf_counter()
         merger = PdfMerger()
@@ -460,6 +491,7 @@ def process_layout_pdf_only(source_dir, dest_dir,
         log_file.close()
 
 
+
 def save_as_html(text, output_path):
     """Saves extracted text to an HTML file"""
     start = time.perf_counter()
@@ -481,9 +513,11 @@ def save_as_html(text, output_path):
             f.write(html_content)
 
         elapsed = time.perf_counter() - start
-        print(f"✅ HTML saved to {output_path} ({elapsed:.2f}s)")
+        print(f"    - 📄 HTML saved: ({elapsed:.2f}s)")
     except Exception as e:
         print(f"❌ Failed to save HTML: {e}")
+
+    return time.perf_counter() - start
 
 
 
@@ -511,19 +545,22 @@ def main():
     source_dir = os.path.expanduser(args.source_dir)
     dest_dir = os.path.expanduser(args.dest_dir) if args.dest_dir else source_dir
 
-    if not (args.docx or args.pdf or args.epub or args.html):
-        print("⚠️ You must select at least one option: --docx, --pdf, --epub")
-        exit(1)
-
     # ─── FORCE PDF‐ONLY IF LAYOUT PRESERVING ───
     # Choose Tesseract config based on --preserve-layout
     if args.preserve_layout:
-        if args.docx or args.epub:
+        if args.docx or args.epub or args.html:
             print("\n⚠️  Warning: --preserve-layout is only compatible with PDF output. Other formats have been disabled.")
+            if args.logfile:
+                with open(args.logfile, "a", encoding="utf-8") as log:
+                    log.write("⚠️  Warning: --preserve-layout is only compatible with PDF output. Other formats have been disabled.\n\n")
         args.pdf, args.docx, args.epub, args.html = True, False, False, False
         tconfig = tesseract_layout_config
     else:
         tconfig = tesseract_default_config
+
+    if not (args.docx or args.pdf or args.epub or args.html):
+        print("⚠️ You must select at least one option: --docx, --pdf, --epub, --html")
+        exit(1)
     
     # Layout‐preserving mode: only generate searchable PDFs via Tesseract CLI
     if args.preserve_layout:
@@ -535,19 +572,18 @@ def main():
             summary=args.summary_output,
             log_path=args.logfile
         )
-
-    # Normal multi‐format flow
-    process_pdfs_with_ocr(
-        source_dir,
-        dest_dir,
-        args.docx,
-        args.pdf,
-        args.epub,
-        args.html,
-        quiet=args.quiet,
-        summary_output=args.summary_output,
-        log_path=args.logfile
-    )
+    else: 
+        process_pdfs_with_ocr(
+            source_dir,
+            dest_dir,
+            args.docx,
+            args.pdf,
+            args.epub,
+            args.html,
+            quiet=args.quiet,
+            summary_output=args.summary_output,
+            log_path=args.logfile
+        )
 
 if __name__ == "__main__":
     main()
