@@ -266,7 +266,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
             log_file.write(f"✅ DOCX folder created - {docx_dir}/\n")
             log_file.flush()
     if generate_pdf:
-        pdf_dir = os.path.join(output_folder, 'pdf')
+        pdf_dir = os.path.join(output_folder, 'pdf_ocr')
         os.makedirs(pdf_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ PDF folder created - {pdf_dir}/\n")
@@ -337,7 +337,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
 
             # Generate PDF if requested
             if generate_pdf:
-                pdf_path = os.path.join(output_folder, 'pdf', base_name + '_ocr.pdf')
+                pdf_path = os.path.join(output_folder, 'pdf_ocr', base_name + '_ocr.pdf')
                 times['pdf'] = save_as_pdf(page_texts, pdf_path, base_name)
                 if not quiet and not summary_output:
                     print(f"    - 📄 OCR PDF created in {times['pdf']:.2f} seconds")
@@ -420,7 +420,7 @@ def process_layout_pdf_only(source_dir, dest_dir,
     """
 
     os.makedirs(dest_dir, exist_ok=True)
-    pdf_dir = os.path.join(dest_dir, 'pdf_preserved')
+    pdf_dir = os.path.join(dest_dir, 'pdf_ocr_layout')
     os.makedirs(pdf_dir, exist_ok=True)
 
     log_file = None
