@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="pdf2ocr",
-    version="1.0.7",
+    version="1.0.8",
     packages=find_packages(),
     install_requires=[
         'pytesseract>=0.3.10',
