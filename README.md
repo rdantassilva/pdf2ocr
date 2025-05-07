@@ -24,12 +24,18 @@ You can install pdf2ocr and use it as a command-line tool by simply:
 pip install pdf2ocr 
 ```
 
-### Run
+### 📌 Usage Example
 
-Use the command:
+Run `pdf2ocr` with multiple output formats and logging:
 
 ```bash
-pdf2ocr ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
+pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile pdf2ocr.log
+```
+
+Run pdf2ocr in layout-preserving mode (PDF only):
+
+```bash
+pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output
 ```
 
 ---
@@ -60,15 +66,7 @@ brew install tesseract poppler
 brew install --cask calibre
 ```
 
-> 💡 **Tip for macOS/Homebrew users:**  
-> It's strongly recommended to use a virtual environment to avoid system restrictions:
->
-> ```bash
-> python3 -m venv venv
-> source venv/bin/activate
-> pip3 install --upgrade pip
-> pip3 install -r requirements.txt
-> ```
+###💡 **Tip for macOS/Homebrew users:**  
 
 > 📌 **Important (macOS only):**  
 > If `ebook-convert` is not available after installing Calibre, you need to manually add it to your PATH:
@@ -84,11 +82,11 @@ brew install --cask calibre
 > source ~/.zshrc
 > ```
 
-Check Calibre installation:
-
-```bash
-ebook-convert --version
-```
+> Check Calibre installation:
+> 
+> ```bash
+> ebook-convert --version
+> ```
 
 ---
 
@@ -96,11 +94,12 @@ ebook-convert --version
 
 To use in a virtual environment:
 
-```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+> ```bash
+> python3 -m venv venv_pdf2ocr
+> source venv_pdf2ocr/bin/activate
+> pip3 install --upgrade pip
+> pip3 install -r requirements.txt
+> ```
 
 ---
 
@@ -122,10 +121,10 @@ pdf2ocr source_folder --docx --pdf --epub --dest-dir output_folder --logfile log
 
 ---
 
-## 📌 Example
+## 
 
 ```bash
-pdf2ocr ./pdfs --docx --pdf --epub --dest-dir ./output --logfile log.txt
+pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile log.txt
 ```
 
 ---
