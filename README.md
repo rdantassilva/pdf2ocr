@@ -1,16 +1,17 @@
 # pdf2ocr
 
-Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats.
+Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML, and EPUB formats.
 
 ---
 
 ## 📄 Features
 
-- 📄 Extracts text from scanned PDFs using Tesseract OCR
-- 📘 Outputs DOCX, HTML and searchable PDFs
-- 📚 Converts to EPUB (via Calibre)
+- 🔍 Extracts text from scanned PDFs using Tesseract OCR
+- 📘 Outputs DOCX, HTML, and searchable PDF files with preserved paragraph structure
+- 📚 Converts DOCX to EPUB via Calibre, including metadata
 - 🧼 Cleans unwanted characters while preserving Portuguese accents
-- 📈 Shows progress bars and summary logs
+- 📈 Displays progress bars and detailed summary logs
+- 📂 Supports layout-preserving mode for high-fidelity PDF OCR
 
 ---
 
@@ -18,28 +19,31 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 
 ### Install globally
 
-You can install pdf2ocr and use it as a command-line tool by simply:
+Install `pdf2ocr` and use it as a command-line tool:
 
 ```bash
 pip install pdf2ocr 
 ```
 
-### 📌 Usage Example
+---
 
-Run `pdf2ocr` with multiple output formats and logging:
+### 📌 Usage Examples
+
+Generate multiple output formats with logging:
 
 ```bash
 pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile pdf2ocr.log
 ```
 
-Run pdf2ocr in layout-preserving mode (PDF only):
+Generate layout-preserving OCR PDFs only:
 
 ```bash
-pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output
+pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output --logfile pdf2ocr.log
 ```
 
----
+> ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
 
+---
 
 ## 🧱 System Requirements
 
@@ -66,10 +70,9 @@ brew install tesseract poppler
 brew install --cask calibre
 ```
 
-###💡 **Tip for macOS/Homebrew users:**  
+#### 💡 Tip for macOS/Homebrew users:
 
-> 📌 **Important (macOS only):**  
-> If `ebook-convert` is not available after installing Calibre, you need to manually add it to your PATH:
+> 📌 **Important:** If `ebook-convert` is not available after installing Calibre, add it to your PATH:
 >
 > ```bash
 > export PATH="$PATH:/Applications/calibre.app/Contents/MacOS"
@@ -94,30 +97,30 @@ brew install --cask calibre
 
 To use in a virtual environment:
 
-> ```bash
-> python3 -m venv venv_pdf2ocr
-> source venv_pdf2ocr/bin/activate
-> pip3 install --upgrade pip
-> pip3 install -r requirements.txt
-> ```
+```bash
+python3 -m venv venv_pdf2ocr
+source venv_pdf2ocr/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
 
 ---
 
 ## ⚙️ Command Line Options
 
 ```bash
-pdf2ocr source_folder --docx --pdf --epub --dest-dir output_folder --logfile log.txt
+pdf2ocr -h
 ```
 
 - `source_folder`: Folder containing the input PDF files.
 - `--dest-dir`: Destination folder for output files (default: same as input).
 - `--docx`: Generate DOCX files with preserved paragraph structure.
-- `--pdf`: Generate OCR-processed PDF files (now with improved paragraph handling).
-- `--epub`: Generate EPUB files (requires `--docx`; uses Calibre's `ebook-convert`).
-- `--html`: Generate html files
-- `--preserve-layout`: Preserve original document layout (PDF only)
-- `--short-output`: Show only the final summary (quiet mode).
-- `--logfile`: Path to write detailed log output (UTF-8 encoded).
+- `--pdf`: Generate OCR-processed PDF files.
+- `--epub`: Generate EPUB files (requires `--docx`; uses Calibre).
+- `--html`: Generate HTML files.
+- `--preserve-layout`: Preserve the visual layout of original documents (PDF only).
+- `--short-output`: Show only final summary output (quiet mode).
+- `--logfile`: Path to save detailed log output (UTF-8 encoded).
 
 ---
 

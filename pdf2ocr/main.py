@@ -523,9 +523,9 @@ def save_as_html(text, output_path):
 
 def parse_arguments():
     """Configure and parse command line arguments"""
-    parser = argparse.ArgumentParser(description="Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB")
-    parser.add_argument("source_dir", help="Input folder with PDF files")
-    parser.add_argument("--dest-dir", help="Output folder (optional, defaults to input folder)", default=None)
+    parser = argparse.ArgumentParser(description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats.")
+    parser.add_argument("source_dir", help="Source folder with PDF files")
+    parser.add_argument("--dest-dir", help="Destination folder (optional, defaults to input folder)", default=None)
     parser.add_argument("--docx", action="store_true", help="Generate DOCX files")
     parser.add_argument("--pdf", action="store_true", help="Generate OCR-processed PDF files")
     parser.add_argument("--html", action="store_true", help="Generate html files")
