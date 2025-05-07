@@ -7,7 +7,7 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 ## 📄 Features
 
 - 📄 Extracts text from scanned PDFs using Tesseract OCR
-- 📘 Outputs DOCX and searchable PDFs
+- 📘 Outputs DOCX, HTML and searchable PDFs
 - 📚 Converts to EPUB (via Calibre)
 - 🧼 Cleans unwanted characters while preserving Portuguese accents
 - 📈 Shows progress bars and summary logs
