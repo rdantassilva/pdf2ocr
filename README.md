@@ -121,14 +121,6 @@ pdf2ocr source_folder --docx --pdf --epub --dest-dir output_folder --logfile log
 
 ---
 
-## 
-
-```bash
-pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile log.txt
-```
-
----
-
 ## 🛠️ Makefile Commands
 
 | Command         | Description                                                        |
