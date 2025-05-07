@@ -16,6 +16,9 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 - 📈 Displays progress bars and detailed summary logs
 - 📂 Supports layout-preserving mode for high-fidelity PDF OCR
 
+> **Note:** `pdf2ocr` is currently optimized for Portuguese.  
+> But it has also worked well with English, and will likely perform reliably with other Latin-based languages (such as Spanish, French, Italian, etc.) due to their shared character sets — even though they haven't been specifically tested.
+
 ---
 
 ## 🚀 Quick Install & Usage
