@@ -21,7 +21,7 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 You can install pdf2ocr and use it as a command-line tool by simply:
 
 ```bash
-pip install jumpcutter 
+pip install pdf2ocr 
 ```
 
 ### Run
