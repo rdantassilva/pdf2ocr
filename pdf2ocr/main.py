@@ -266,7 +266,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
             log_file.write(f"✅ DOCX folder created - {docx_dir}/\n")
             log_file.flush()
     if generate_pdf:
-        pdf_dir = os.path.join(output_folder, 'pdf')
+        pdf_dir = os.path.join(output_folder, 'pdf_ocr')
         os.makedirs(pdf_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ PDF folder created - {pdf_dir}/\n")
@@ -327,7 +327,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
 
             # Generate DOCX if requested
             if generate_docx:
-                docx_path = os.path.join(output_folder, 'docx', base_name + '.docx')
+                docx_path = os.path.join(output_folder, docx_dir, base_name + '.docx')
                 times['docx'] = save_as_docx(final_text, docx_path)
                 if not quiet and not summary_output:
                     print(f"    - 📄 DOCX created in {times['docx']:.2f} seconds")
@@ -337,7 +337,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
 
             # Generate PDF if requested
             if generate_pdf:
-                pdf_path = os.path.join(output_folder, 'pdf', base_name + '_ocr.pdf')
+                pdf_path = os.path.join(output_folder, pdf_dir, base_name + '_ocr.pdf')
                 times['pdf'] = save_as_pdf(page_texts, pdf_path, base_name)
                 if not quiet and not summary_output:
                     print(f"    - 📄 OCR PDF created in {times['pdf']:.2f} seconds")
@@ -346,7 +346,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
                     log_file.flush()
 
             if generate_html:
-                html_path = os.path.join(output_folder, 'html', base_name + '.html')
+                html_path = os.path.join(output_folder, html_dir, base_name + '.html')
                 html_text = "".join(f"<p>{page.strip()}</p>\n" for page in page_texts)
                 times['html'] = save_as_html(html_text, html_path)
                 if log_file:
@@ -355,7 +355,7 @@ def process_pdfs_with_ocr(input_folder, output_folder, generate_docx, generate_p
 
             # Generate EPUB if requested
             if generate_epub:
-                epub_path = os.path.join(output_folder, 'epub', base_name + '.epub')
+                epub_path = os.path.join(output_folder, epub_dir, base_name + '.epub')
                 success, times['epub'], output = convert_docx_to_epub(docx_path, epub_path)
                 
                 if success:
@@ -420,7 +420,7 @@ def process_layout_pdf_only(source_dir, dest_dir,
     """
 
     os.makedirs(dest_dir, exist_ok=True)
-    pdf_dir = os.path.join(dest_dir, 'pdf_preserved')
+    pdf_dir = os.path.join(dest_dir, 'pdf_ocr_layout')
     os.makedirs(pdf_dir, exist_ok=True)
 
     log_file = None
