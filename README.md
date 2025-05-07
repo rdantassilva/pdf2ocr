@@ -110,13 +110,15 @@ pip install -r requirements.txt
 pdf2ocr source_folder --docx --pdf --epub --dest-dir output_folder --logfile log.txt
 ```
 
-- `source_folder`: Folder with input PDF files
-- `--dest-dir`: Output folder (default is the input folder)
-- `--docx`: Generate DOCX files
-- `--pdf`: Generate OCR-processed PDF files
-- `--epub`: Generate EPUB files (requires `--docx`)
-- `--short-output`: Show only final summary output
-- `--logfile`: Path to save detailed log output (UTF-8)
+- `source_folder`: Folder containing the input PDF files.
+- `--dest-dir`: Destination folder for output files (default: same as input).
+- `--docx`: Generate DOCX files with preserved paragraph structure.
+- `--pdf`: Generate OCR-processed PDF files (now with improved paragraph handling).
+- `--epub`: Generate EPUB files (requires `--docx`; uses Calibre's `ebook-convert`).
+- `--html`: Generate html files
+- `--preserve-layout`: Preserve original document layout (PDF only)
+- `--short-output`: Show only the final summary (quiet mode).
+- `--logfile`: Path to write detailed log output (UTF-8 encoded).
 
 ---
 
