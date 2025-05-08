@@ -35,7 +35,7 @@ pdf2ocr ./pdfs --pdf --lang spa  # For Spanish 🇪🇸🇲🇽🇦🇷🇨🇱�
 pdf2ocr ./pdfs --pdf --lang fra  # For French 🇫🇷
 ```
 
-To check the code for all languages supported by Tesseract, run the command below:
+**To check the code for all languages supported by Tesseract, run the command below:**
 ```bash
 tesseract --list-langs
 ```
