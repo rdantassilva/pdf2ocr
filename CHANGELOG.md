@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-## [v1.0.12] - 2024-05-25
+## [v1.0.12] - 2025-05-08
 
 ### ✨ Added
 - `--lang` option to set the Tesseract OCR language (default: `por`).
@@ -28,7 +28,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [v1.0.8] - 2024-05-06
+## [v1.0.8] - 2025-05-06
 
 ### ✨ Added
 - `--html` option to export OCR results as HTML.
