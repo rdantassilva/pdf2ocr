@@ -12,12 +12,33 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 - 🔍 Extracts text from scanned PDFs using Tesseract OCR
 - 📘 Outputs DOCX, HTML, and searchable PDF files with preserved paragraph structure
 - 📚 Converts DOCX to EPUB via Calibre, including metadata
-- 🧼 Cleans unwanted characters while preserving Portuguese and English accents
 - 📈 Displays progress bars and detailed summary logs
 - 📂 Supports layout-preserving mode for high-fidelity PDF OCR
 
-> **Note:** `pdf2ocr` is currently optimized for Portuguese.  
-> But it has also worked well with English, and will likely perform reliably with other Latin-based languages (such as Spanish, French, Italian, etc.) due to their shared character sets — even though they haven't been specifically tested.
+---
+
+## 🌍 Language Support
+
+`pdf2ocr` is currently optimized for **Portuguese** 🇧🇷🇵🇹 and uses it as the default OCR language.
+
+You can override the language using the `--lang` option. Examples:
+
+```bash
+pdf2ocr ./pdfs --pdf --lang eng  # For English 🇬🇧🇺🇲
+```
+
+```bash
+pdf2ocr ./pdfs --pdf --lang spa  # For Spanish 🇪🇸🇲🇽🇦🇷🇨🇱🇨🇴
+```
+
+```bash
+pdf2ocr ./pdfs --pdf --lang fra  # For French 🇫🇷
+```
+
+To check the code for all languages supported by Tesseract, run the command below:
+```bash
+tesseract --list-langs
+```
 
 ---
 
