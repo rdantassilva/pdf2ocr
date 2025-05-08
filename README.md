@@ -17,6 +17,35 @@ Python script to apply OCR on PDF files and generate output in DOCX, searchable 
 
 ---
 
+## 🚀 Quick Install & Usage
+
+### Install globally
+
+Install `pdf2ocr` and use it as a command-line tool:
+
+```bash
+pip install pdf2ocr 
+```
+---
+### 📌 Usage Examples
+
+Generate multiple output formats with logging:
+
+```bash
+pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile pdf2ocr.log
+```
+
+Generate layout-preserving OCR PDFs only:
+
+```bash
+pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output --logfile pdf2ocr.log
+```
+
+> ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
+
+---
+
+
 ## 🌍 Language Support
 
 `pdf2ocr` is currently optimized for **Portuguese** 🇧🇷🇵🇹 and uses it as the default OCR language.
@@ -42,45 +71,29 @@ tesseract --list-langs
 
 ---
 
-## 🚀 Quick Install & Usage
+## 🧱 System Requirements and Tesseract language models
 
-### Install globally
+### Ubuntu / Debian (APT)
 
-Install `pdf2ocr` and use it as a command-line tool:
+Install Tesseract OCR and the most common language models:
 
 ```bash
-pip install pdf2ocr 
+sudo apt update && sudo apt install tesseract-ocr \
+    tesseract-ocr-por tesseract-ocr-eng tesseract-ocr-spa \
+    tesseract-ocr-fra tesseract-ocr-ita
+```
+
+> Or, to install **all available language models**:
+
+```bash
+sudo apt install tesseract-ocr-all
 ```
 
 ---
-
-### 📌 Usage Examples
-
-Generate multiple output formats with logging:
-
-```bash
-pdf2ocr ./pdfs --docx --pdf --epub --html --dest-dir ./output --logfile pdf2ocr.log
-```
-
-Generate layout-preserving OCR PDFs only:
-
-```bash
-pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output --logfile pdf2ocr.log
-```
-
-> ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
-
----
-
-## 🧱 System Requirements
-
-### Ubuntu/Debian (APT)
-
-```bash
-sudo apt update && sudo apt install tesseract-ocr poppler-utils calibre
-```
 
 ### Fedora / Red Hat / CentOS / AlmaLinux / Rocky Linux (DNF or YUM)
+
+#### OCR requirements:
 
 ```bash
 # For modern systems (DNF)
@@ -89,6 +102,15 @@ sudo dnf install tesseract poppler-utils calibre
 # For older systems (YUM)
 sudo yum install tesseract poppler-utils calibre
 ```
+
+#### To install additional OCR language models:
+
+```bash
+sudo dnf install tesseract-langpack-por tesseract-langpack-eng \
+    tesseract-langpack-spa tesseract-langpack-fra tesseract-langpack-ita
+```
+
+> There is no equivalent to `tesseract-ocr-all` on Red Hat-based systems — install only the languages you need.
 
 ### macOS (Homebrew)
 
