@@ -38,7 +38,7 @@ import re  # Handle regular expressions for text cleanup and filtering
 import shutil  # High-level file operations (copy, move, check binaries)
 import subprocess  # Run external commands like `ebook-convert`
 import time  # Measure elapsed time for performance tracking
-import unicodedata
+import unicodedata  # Normalize and remove accents from Unicode strings
 
 from docx import Document  # Word document manipulation
 from pdf2image import convert_from_path  # PDF to image conversion
@@ -55,9 +55,8 @@ from tqdm import tqdm  # Progress bar
 # Two Tesseract configurations:
 # - default: fast and accurate, does not preserve layout
 # - layout-aware: tries to maintain original blocks and columns
-# -l por: Portuguese language
-tesseract_default_config = r"--oem 3 --psm 1 -l por"
-tesseract_layout_config = r"--oem 1 --psm 11 -l por"
+tesseract_default_config = "--oem 3 --psm 1"
+tesseract_layout_config = "--oem 1 --psm 11"
 
 
 def detect_package_manager():
@@ -118,6 +117,39 @@ def check_dependencies(generate_epub=False):
         exit(1)
 
 
+def validate_tesseract_language(lang_code, quiet=False, logfile=None):
+
+    try:
+        result = subprocess.run(
+            ["tesseract", "--list-langs"], capture_output=True, text=True, check=True
+        )
+        langs = result.stdout.lower().splitlines()
+        langs = [lang.strip() for lang in langs if lang.strip() and not lang.startswith("list of")]
+
+        if lang_code.lower() not in langs:
+            print(
+                f"\n❌ The language '{lang_code.upper()}' is not installed in your Tesseract setup."
+            )
+            print("   Run `tesseract --list-langs` to view available languages.")
+            exit(1)
+
+        if not quiet:
+            print(f"\n📘 Using Tesseract language model: {lang_code.upper()}")
+
+        if logfile:
+            try:
+                with open(logfile, "a", encoding="utf-8") as log:
+                    log.write(
+                        f"\n📘 Tesseract language model selected: {lang_code.upper()}\n"
+                    )
+            except Exception as e:
+                print(f"⚠️ Could not write language info to log: {e}")
+
+    except Exception as e:
+        print(f"\n❌ Failed to check Tesseract languages: {e}")
+        exit(1)
+
+
 def preprocess_image(img):
     """Pre-processes image to improve OCR quality"""
     img = img.convert("L")  # Convert to grayscale
@@ -138,7 +170,7 @@ def clean_text_portuguese(text):
     return re.sub(f"[^{allowed}]", "", text)
 
 
-def extract_text_from_pdf(pdf_source_path, quiet=False):
+def extract_text_from_pdf(pdf_source_path, tesseract_config, lang, quiet=False):
     """Converts PDF to text using OCR"""
     pages = convert_from_path(
         pdf_source_path, dpi=400
@@ -146,18 +178,19 @@ def extract_text_from_pdf(pdf_source_path, quiet=False):
     final_text = ""
     page_texts = []
 
-    tesseract_custom_config = tesseract_default_config
-
     # Process each page with progress bar
     ocr_start = time.perf_counter()
     for page_img in tqdm(
         pages, desc="Extracting text (OCR)...", ascii=False, ncols=75, disable=quiet
     ):
         page_img = preprocess_image(page_img)  # Pre-processing
-        text = image_to_string(page_img, config=tesseract_custom_config)  # Extract text
-        text = clean_text_portuguese(
-            text
-        )  # clean non-ASCII preserving Portuguese caracters
+        text = image_to_string(page_img, config=tesseract_config)  # Extract text
+
+        if lang.lower() == "por":
+            text = clean_text_portuguese(
+                text
+            )  # clean non-ASCII preserving Portuguese characters
+
         page_texts.append(text)
         final_text += text + "\n\n"
 
@@ -269,8 +302,10 @@ def convert_docx_to_epub(docx_path, epub_path):
 
 
 def process_pdfs_with_ocr(
-    input_folder,
-    output_folder,
+    source_dir,
+    dest_dir,
+    tesseract_config,
+    lang,
     generate_docx,
     generate_pdf,
     generate_epub,
@@ -297,34 +332,34 @@ def process_pdfs_with_ocr(
         log_file.flush()
 
     # Create output folders as needed
-    os.makedirs(output_folder, exist_ok=True)
+    os.makedirs(dest_dir, exist_ok=True)
     if generate_docx:
-        docx_dir = os.path.join(output_folder, "docx")
+        docx_dir = os.path.join(dest_dir, "docx")
         os.makedirs(docx_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ DOCX folder created - {docx_dir}/\n")
             log_file.flush()
     if generate_pdf:
-        pdf_dir = os.path.join(output_folder, "pdf_ocr")
+        pdf_dir = os.path.join(dest_dir, "pdf_ocr")
         os.makedirs(pdf_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ PDF folder created - {pdf_dir}/\n")
             log_file.flush()
     if generate_epub:
-        epub_dir = os.path.join(output_folder, "epub")
+        epub_dir = os.path.join(dest_dir, "epub")
         os.makedirs(epub_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ EPUB folder created - {epub_dir}/\n")
             log_file.flush()
     if generate_html:
-        html_dir = os.path.join(output_folder, "html")
+        html_dir = os.path.join(dest_dir, "html")
         os.makedirs(html_dir, exist_ok=True)
         if log_file:
             log_file.write(f"✅ HTML folder created - {html_dir}/\n")
             log_file.flush()
 
     # List and sort PDF files in input folder
-    pdf_files = [f for f in os.listdir(input_folder) if f.lower().endswith(".pdf")]
+    pdf_files = [f for f in os.listdir(source_dir) if f.lower().endswith(".pdf")]
     pdf_files.sort()
 
     total = len(pdf_files)
@@ -348,12 +383,12 @@ def process_pdfs_with_ocr(
             log_file.flush()
 
         try:
-            pdf_source_path = os.path.join(input_folder, filename)
+            pdf_source_path = os.path.join(source_dir, filename)
             base_name = os.path.splitext(filename)[0]
 
             # Step 1: Text extraction with OCR
             final_text, page_texts, ocr_time = extract_text_from_pdf(
-                pdf_source_path, quiet or summary_output
+                pdf_source_path, tesseract_config, lang, quiet or summary_output
             )
 
             if not quiet and not summary_output:
@@ -372,7 +407,7 @@ def process_pdfs_with_ocr(
 
             # Generate DOCX if requested
             if generate_docx:
-                docx_path = os.path.join(output_folder, docx_dir, base_name + ".docx")
+                docx_path = os.path.join(dest_dir, docx_dir, base_name + ".docx")
                 times["docx"] = save_as_docx(final_text, docx_path)
                 if not quiet and not summary_output:
                     print(f"    - 📄 DOCX created in {times['docx']:.2f} seconds")
@@ -382,7 +417,7 @@ def process_pdfs_with_ocr(
 
             # Generate PDF if requested
             if generate_pdf:
-                pdf_path = os.path.join(output_folder, pdf_dir, base_name + "_ocr.pdf")
+                pdf_path = os.path.join(dest_dir, pdf_dir, base_name + "_ocr.pdf")
                 times["pdf"] = save_as_pdf(page_texts, pdf_path, base_name)
                 if not quiet and not summary_output:
                     print(f"    - 📄 OCR PDF created in {times['pdf']:.2f} seconds")
@@ -391,7 +426,7 @@ def process_pdfs_with_ocr(
                     log_file.flush()
 
             if generate_html:
-                html_path = os.path.join(output_folder, html_dir, base_name + ".html")
+                html_path = os.path.join(dest_dir, html_dir, base_name + ".html")
                 html_text = "".join(f"<p>{page.strip()}</p>\n" for page in page_texts)
                 times["html"] = save_as_html(html_text, html_path)
                 if log_file:
@@ -400,7 +435,7 @@ def process_pdfs_with_ocr(
 
             # Generate EPUB if requested
             if generate_epub:
-                epub_path = os.path.join(output_folder, epub_dir, base_name + ".epub")
+                epub_path = os.path.join(dest_dir, epub_dir, base_name + ".epub")
                 success, times["epub"], output = convert_docx_to_epub(
                     docx_path, epub_path
                 )
@@ -597,6 +632,11 @@ def parse_arguments():
         action="store_true",
         help="Preserve original document layout (PDF only)",
     )
+    parser.add_argument(
+        "--lang",
+        default="por",
+        help="OCR language code (default: por). Use `tesseract --list-langs` to view options.",
+    )
     parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
     parser.add_argument(
         "--short-output",
@@ -613,6 +653,9 @@ def main():
     """Main entry point for the CLI"""
     args = parse_arguments()
     check_dependencies(generate_epub=args.epub)
+    validate_tesseract_language(
+        lang_code=args.lang, quiet=args.quiet, logfile=args.logfile
+    )
     source_dir = os.path.expanduser(args.source_dir)
     dest_dir = os.path.expanduser(args.dest_dir) if args.dest_dir else source_dir
 
@@ -626,12 +669,12 @@ def main():
             if args.logfile:
                 with open(args.logfile, "a", encoding="utf-8") as log:
                     log.write(
-                        "⚠️  Warning: --preserve-layout is only compatible with PDF output. Other formats have been disabled.\n\n"
+                        "\n⚠️  Warning: --preserve-layout is only compatible with PDF output. Other formats have been disabled.\n\n"
                     )
         args.pdf, args.docx, args.epub, args.html = True, False, False, False
-        tconfig = tesseract_layout_config
+        tconfig = f"{tesseract_layout_config} -l {args.lang}"
     else:
-        tconfig = tesseract_default_config
+        tconfig = f"{tesseract_default_config} -l {args.lang}"
 
     if not (args.docx or args.pdf or args.epub or args.html):
         print("⚠️ You must select at least one option: --docx, --pdf, --epub, --html")
@@ -642,7 +685,7 @@ def main():
         process_layout_pdf_only(
             source_dir,
             dest_dir,
-            tesseract_config=tconfig,
+            tconfig,  # tesseract_config
             quiet=args.quiet,
             summary=args.summary_output,
             log_path=args.logfile,
@@ -651,6 +694,8 @@ def main():
         process_pdfs_with_ocr(
             source_dir,
             dest_dir,
+            tconfig,  # tesseract_config
+            args.lang,
             args.docx,
             args.pdf,
             args.epub,

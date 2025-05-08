@@ -6,6 +6,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [v1.0.12] - 2024-05-25
+
+### ✨ Added
+- `--lang` option to set the Tesseract OCR language (default: `por`).
+- Validation for selected OCR language (via `tesseract --list-langs`).
+- Logging and CLI feedback for the selected OCR language.
+- Automatic language check with clear errors if model is missing.
+- Unit test to validate the `--lang` argument.
+- Section in README explaining supported languages and installation of Tesseract language models.
+- Enhanced test coverage and language-specific cleanup for Portuguese.
+
+### 🛠 Changed
+- Portuguese text cleaning (`clean_text_portuguese`) is now applied only when `--lang por` is used.
+- Output directory for layout-preserving PDFs renamed to `pdf_ocr_layout`.
+- Clarified README structure and included flag examples (🇧🇷, 🇺🇲, 🇪🇸...).
+
+### 🐛 Fixed
+- Syntax error when mixing positional and keyword arguments in `process_pdfs_with_ocr`.
+- PDF not being found in expected folder during automated test execution.
+
 ---
 
 ## [v1.0.8] - 2024-05-06
