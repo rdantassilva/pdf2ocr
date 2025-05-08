@@ -28,11 +28,11 @@ pdf2ocr ./pdfs --pdf --lang eng  # For English 🇬🇧🇺🇲
 ```
 
 ```bash
-pdf2ocr ./pdfs --pdf --lang spa  # For Spanish 🇪🇸🇲🇽🇦🇷🇨🇱🇨🇴
+pdf2ocr ./pdfs --pdf --lang spa  # For Spanish (Español) 🇪🇸🇲🇽🇦🇷🇨🇱🇨🇴
 ```
 
 ```bash
-pdf2ocr ./pdfs --pdf --lang fra  # For French 🇫🇷
+pdf2ocr ./pdfs --pdf --lang fra  # For French (Français) 🇫🇷
 ```
 
 **To check the code for all languages supported by Tesseract, run the command below:**
@@ -146,6 +146,7 @@ pdf2ocr -h
 - `--epub`: Generate EPUB files (requires `--docx`; uses Calibre).
 - `--html`: Generate HTML files.
 - `--preserve-layout`: Preserve the visual layout of original documents (PDF only).
+- `--lang`: Set the OCR language code (default: por). Use tesseract --list-langs to check installed options.
 - `--short-output`: Show only final summary output (quiet mode).
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
 
