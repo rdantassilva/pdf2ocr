@@ -8,12 +8,13 @@ setup(
     version="1.0.12",
     packages=find_packages(),
     install_requires=[
-        'pytesseract>=0.3.10',
-        'pdf2image>=1.16.0',
-        'python-docx>=0.8.11',
-        'reportlab>=4.0.0',
-        'tqdm>=4.45.0',
-        'Pillow>=9.0.0'
+    'pytesseract>=0.3.10',
+    'pdf2image>=1.16.0',
+    'python-docx>=0.8.11',
+    'reportlab>=4.0.0',
+    'tqdm>=4.45.0',
+    'Pillow>=9.0.0',
+    'PyPDF2>=3.0.0'
     ],
     entry_points={
         'console_scripts': [
