@@ -171,6 +171,7 @@ pdf2ocr -h
 - `--lang`: Set the OCR language code (default: por). Use tesseract --list-langs to check installed options.
 - `--short-output`: Show only final summary output (quiet mode).
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
+- `--version`: show program's version number and exit
 
 ---
 
