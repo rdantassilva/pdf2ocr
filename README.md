@@ -3,14 +3,14 @@
 
 # pdf2ocr
 
-Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML, and EPUB formats.
+A CLI tool to apply OCR on PDF files and export to multiple formats.
 
 ---
 
 ## 📄 Features
 
 - 🔍 Extracts text from scanned PDFs using Tesseract OCR
-- 📘 Outputs DOCX, HTML, and searchable PDF files with preserved paragraph structure
+- 📘 Outputs DOCX, HTML, EPUB and searchable PDF files with preserved paragraph structure
 - 📚 Converts DOCX to EPUB via Calibre, including metadata
 - 📈 Displays progress bars and detailed summary logs
 - 📂 Supports layout-preserving mode for high-fidelity PDF OCR
