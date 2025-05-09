@@ -139,7 +139,7 @@ def validate_tesseract_language(lang_code, quiet=False, logfile=None):
         label_text = f"{lang_code} ({lang_label})" if lang_label else lang_code
 
         if lang_code not in langs:
-            print(f"\n❌ The language '{lang_code}' is not installed in your Tesseract setup.")
+            print(f"\n❌ The language '{label_text}' is not installed in your Tesseract setup.")
             print("   Run `tesseract --list-langs` to view available languages.")
             exit(1)
 
