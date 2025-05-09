@@ -1,7 +1,7 @@
 # coding:utf-8
 
 """
-Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB.
+A CLI tool to apply OCR on PDF files and export to multiple formats.
 
 Description of Libraries:
 - 📜 PIL/Pillow: Image processing (open, convert and enhance images for OCR)
@@ -51,6 +51,7 @@ from reportlab.lib.pagesizes import A4  # Standard page size
 from reportlab.lib.units import cm  # Measurement units
 from reportlab.pdfgen import canvas  # PDF generation
 from tqdm import tqdm  # Progress bar
+from pdf2ocr import __version__
 
 # Two Tesseract configurations:
 # - default: fast and accurate, does not preserve layout
@@ -617,7 +618,7 @@ def save_as_html(text, output_path):
 def parse_arguments():
     """Configure and parse command line arguments"""
     parser = argparse.ArgumentParser(
-        description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats."
+    description=f"pdf2ocr v{__version__} - A CLI tool to apply OCR on PDF files and export to multiple formats."
     )
     parser.add_argument("source_dir", help="Source folder with PDF files")
     parser.add_argument(
@@ -654,6 +655,11 @@ def parse_arguments():
         help="Display only final conversion summary (short output mode)",
     )
     parser.add_argument("--logfile", help="Path to log file (optional)")
+    parser.add_argument(
+    "--version",
+    action="version",
+    version=f"pdf2ocr {__version__}"
+    )
     return parser.parse_args()
 
 
