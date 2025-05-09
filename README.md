@@ -177,12 +177,15 @@ pdf2ocr -h
 
 ## 🛠️ Makefile Commands
 
-| Command         | Description                                                        |
-|-----------------|--------------------------------------------------------------------|
-| `make venv`     | Create and activate a Python virtual environment                   |
-| `make install`  | Install pdf2ocr globally                                           |
-| `make run`      | Run the script with example parameters                             |
-| `make clean`    | Remove cache, logs, and generated output                           |
+| Command         | Description                                                                 |
+|-----------------|-----------------------------------------------------------------------------|
+| `make venv`     | Create and set up a virtual environment (`venv_pdf2ocr`)                    |
+| `make install`  | Install `pdf2ocr` globally (or into active virtualenv)                      |
+| `make run`      | Run `pdf2ocr` with example parameters (PDF, DOCX, EPUB, HTML)               |
+| `make test`     | Run automated tests with `pytest`                                           |
+| `make lint`     | Run `flake8` to check code quality                                          |
+| `make format`   | Auto-format code using `black` and `isort`                                  |
+| `make clean`    | Remove Python cache, logs, build files and other generated artifacts        |
 
 ---
 
