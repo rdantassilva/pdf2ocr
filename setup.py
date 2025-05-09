@@ -1,11 +1,21 @@
 from setuptools import setup, find_packages
+import re
 
 with open("README.md", "r", encoding="utf-8") as f:
     long_description = f.read()
 
+
+def get_version():
+    with open("pdf2ocr/__init__.py", encoding="utf-8") as f:
+        content = f.read()
+    match = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    raise RuntimeError("Unable to find version string. \nCheck the variable __version__ in your __init__.py file")
+
 setup(
     name="pdf2ocr",
-    version="1.0.14",
+    version=get_version(),
     packages=find_packages(),
     install_requires=[
     'pytesseract>=0.3.10',
@@ -23,7 +33,7 @@ setup(
     },
     python_requires='>=3.6',
     author="Rafael Dantas",
-    description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats",
+    description="A CLI tool to apply OCR on PDF files and export to multiple formats.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="MIT"
