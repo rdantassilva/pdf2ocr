@@ -118,6 +118,15 @@ def check_dependencies(generate_epub=False):
 
 
 def validate_tesseract_language(lang_code, quiet=False, logfile=None):
+    LANG_LABELS = {
+        "por": "Portuguese",
+        "eng": "English",
+        "spa": "Spanish",
+        "fra": "French",
+        "ita": "Italian",
+    }
+
+    lang_code = lang_code.lower()  # normalize early
 
     try:
         result = subprocess.run(
@@ -126,22 +135,21 @@ def validate_tesseract_language(lang_code, quiet=False, logfile=None):
         langs = result.stdout.lower().splitlines()
         langs = [lang.strip() for lang in langs if lang.strip() and not lang.startswith("list of")]
 
-        if lang_code.lower() not in langs:
-            print(
-                f"\n❌ The language '{lang_code.upper()}' is not installed in your Tesseract setup."
-            )
+        lang_label = LANG_LABELS.get(lang_code)
+        label_text = f"{lang_code} ({lang_label})" if lang_label else lang_code
+
+        if lang_code not in langs:
+            print(f"\n❌ The language '{label_text}' is not installed in your Tesseract setup.")
             print("   Run `tesseract --list-langs` to view available languages.")
             exit(1)
 
         if not quiet:
-            print(f"\n📘 Using Tesseract language model: {lang_code.upper()}")
+            print(f"\n📘 Using Tesseract language model: {label_text}")
 
         if logfile:
             try:
                 with open(logfile, "a", encoding="utf-8") as log:
-                    log.write(
-                        f"\n📘 Tesseract language model selected: {lang_code.upper()}\n"
-                    )
+                    log.write(f"\n📘 Tesseract language model selected: {label_text}\n")
             except Exception as e:
                 print(f"⚠️ Could not write language info to log: {e}")
 
