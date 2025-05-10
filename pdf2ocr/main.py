@@ -51,6 +51,7 @@ from reportlab.lib.pagesizes import A4  # Standard page size
 from reportlab.lib.units import cm  # Measurement units
 from reportlab.pdfgen import canvas  # PDF generation
 from tqdm import tqdm  # Progress bar
+
 from pdf2ocr import __version__
 
 # Two Tesseract configurations:
@@ -119,30 +120,50 @@ def check_dependencies(generate_epub=False):
 
 
 def validate_tesseract_language(lang_code, quiet=False, logfile=None):
+    """
+    Validates if the given language code is installed in Tesseract.
+    Displays the language name and logs it if requested.
+    """
+    # Map most common languages (Tesseract code → Human-readable name)
     LANG_LABELS = {
         "por": "Portuguese",
         "eng": "English",
         "spa": "Spanish",
         "fra": "French",
+        "deu": "German",
         "ita": "Italian",
+        "nld": "Dutch",
+        "rus": "Russian",
+        "tur": "Turkish",
+        "jpn": "Japanese",
+        "chi_sim": "Chinese (Simplified)",
+        "chi_tra": "Chinese (Traditional)",
+        "chi_sim_vert": "Chinese (Simplified, vertical)",
+        "chi_tra_vert": "Chinese (Traditional, vertical)",
+        "heb": "Hebrew",
     }
 
-    lang_code = lang_code.lower()  # normalize early
+    lang_code = lang_code.lower()  # normalize input
 
     try:
+        # Run Tesseract to get list of installed languages
         result = subprocess.run(
             ["tesseract", "--list-langs"], capture_output=True, text=True, check=True
         )
-        langs = result.stdout.lower().splitlines()
-        langs = [lang.strip() for lang in langs if lang.strip() and not lang.startswith("list of")]
+
+        langs_installed = [
+            line.strip()
+            for line in result.stdout.lower().splitlines()
+            if line.strip() and not line.startswith("list of")
+        ]
+
+        if lang_code not in langs_installed:
+            print(f"❌ Language '{lang_code}' is not installed in Tesseract.")
+            print("ℹ️ Run 'tesseract --list-langs' to see available languages.")
+            exit(1)
 
         lang_label = LANG_LABELS.get(lang_code)
         label_text = f"{lang_code} ({lang_label})" if lang_label else lang_code
-
-        if lang_code not in langs:
-            print(f"\n❌ The language '{label_text}' is not installed in your Tesseract setup.")
-            print("   Run `tesseract --list-langs` to view available languages.")
-            exit(1)
 
         if not quiet:
             print(f"\n📘 Using Tesseract language model: {label_text}")
@@ -279,28 +300,52 @@ def save_as_pdf(text_pages, output_path, filename):
     return time.perf_counter() - start
 
 
-def convert_docx_to_epub(docx_path, epub_path):
+def convert_docx_to_epub(docx_path, epub_path, lang):
     """Converts DOCX to EPUB using Calibre"""
     start = time.perf_counter()
     try:
         title = os.path.splitext(os.path.basename(str(epub_path)))[0].replace("_", " ")
 
+        TESS_TO_CALIBRE_LANG = {
+            "por": "pt",  # Portuguese
+            "eng": "en",  # English
+            "spa": "es",  # Spanish
+            "fra": "fr",  # French
+            "deu": "de",  # German
+            "ita": "it",  # Italian
+            "nld": "nl",  # Dutch
+            "rus": "ru",  # Russian
+            "tur": "tr",  # Turkish
+            "jpn": "ja",  # Japanese
+            "chi_sim": "zh",  # Chinese
+            "chi_tra": "zh",  # Chinese
+            "chi_sim_vert": "zh",  # Chinese
+            "chi_tra_vert": "zh",  # Chinese
+            "heb": "he",  # Hebrew
+        }
+
+        tess_lang = lang  # ex: 'por'
+        calibre_lang = TESS_TO_CALIBRE_LANG.get(tess_lang)
+
+        cmd = [
+            "ebook-convert",
+            docx_path,
+            epub_path,
+            "--title",
+            title,
+            "--authors",
+            "pdf2ocr",
+            "--comments",
+            "Converted by pdf2ocr",
+            "--level1-toc",
+            "//h:h1",
+        ]
+
+        if calibre_lang:
+            cmd += ["--language", calibre_lang]
+
         result = subprocess.run(
-            [
-                "ebook-convert",
-                docx_path,
-                epub_path,
-                "--title",
-                title,
-                "--authors",
-                "pdf2ocr",
-                "--comments",
-                "Converted by pdf2ocr",
-                "--language",
-                "pt",
-                "--level1-toc",
-                "//h:h1",
-            ],
+            cmd,
             capture_output=True,
             text=True,
             check=True,
@@ -446,7 +491,7 @@ def process_pdfs_with_ocr(
             if generate_epub:
                 epub_path = os.path.join(epub_dir, base_name + ".epub")
                 success, times["epub"], output = convert_docx_to_epub(
-                    docx_path, epub_path
+                    docx_path, epub_path, lang
                 )
 
                 if success:
@@ -618,7 +663,7 @@ def save_as_html(text, output_path):
 def parse_arguments():
     """Configure and parse command line arguments"""
     parser = argparse.ArgumentParser(
-    description=f"pdf2ocr v{__version__} - A CLI tool to apply OCR on PDF files and export to multiple formats."
+        description=f"pdf2ocr v{__version__} - A CLI tool to apply OCR on PDF files and export to multiple formats."
     )
     parser.add_argument("source_dir", help="Source folder with PDF files")
     parser.add_argument(
@@ -655,11 +700,7 @@ def parse_arguments():
         help="Display only final conversion summary (short output mode)",
     )
     parser.add_argument("--logfile", help="Path to log file (optional)")
-    parser.add_argument(
-    "--version",
-    action="version",
-    version=f"pdf2ocr {__version__}"
-    )
+    parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
 
 
