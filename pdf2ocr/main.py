@@ -1,7 +1,7 @@
 # coding:utf-8
 
 """
-A CLI tool to apply OCR on PDF files and export to multiple formats.
+Script for OCR on PDFs generating DOCX, OCR-processed PDF and EPUB.
 
 Description of Libraries:
 - 📜 PIL/Pillow: Image processing (open, convert and enhance images for OCR)
@@ -51,7 +51,6 @@ from reportlab.lib.pagesizes import A4  # Standard page size
 from reportlab.lib.units import cm  # Measurement units
 from reportlab.pdfgen import canvas  # PDF generation
 from tqdm import tqdm  # Progress bar
-from pdf2ocr import __version__
 
 # Two Tesseract configurations:
 # - default: fast and accurate, does not preserve layout
@@ -134,13 +133,19 @@ def validate_tesseract_language(lang_code, quiet=False, logfile=None):
             ["tesseract", "--list-langs"], capture_output=True, text=True, check=True
         )
         langs = result.stdout.lower().splitlines()
-        langs = [lang.strip() for lang in langs if lang.strip() and not lang.startswith("list of")]
+        langs = [
+            lang.strip()
+            for lang in langs
+            if lang.strip() and not lang.startswith("list of")
+        ]
 
         lang_label = LANG_LABELS.get(lang_code)
         label_text = f"{lang_code} ({lang_label})" if lang_label else lang_code
 
         if lang_code not in langs:
-            print(f"\n❌ The language '{label_text}' is not installed in your Tesseract setup.")
+            print(
+                f"\n❌ The language '{label_text}' is not installed in your Tesseract setup."
+            )
             print("   Run `tesseract --list-langs` to view available languages.")
             exit(1)
 
@@ -279,28 +284,27 @@ def save_as_pdf(text_pages, output_path, filename):
     return time.perf_counter() - start
 
 
-def convert_docx_to_epub(docx_path, epub_path):
+def convert_docx_to_epub(docx_path, epub_path, lang):
     """Converts DOCX to EPUB using Calibre"""
     start = time.perf_counter()
     try:
         title = os.path.splitext(os.path.basename(str(epub_path)))[0].replace("_", " ")
 
+        cmd = [
+            "ebook-convert",
+            docx_path,
+            epub_path,
+            "--title", title,
+            "--authors", "pdf2ocr",
+            "--comments", "Converted by pdf2ocr",
+            "--level1-toc", "//h:h1",
+        ]
+
+        if lang == "por":
+            cmd += ["--language", "pt"]
+
         result = subprocess.run(
-            [
-                "ebook-convert",
-                docx_path,
-                epub_path,
-                "--title",
-                title,
-                "--authors",
-                "pdf2ocr",
-                "--comments",
-                "Converted by pdf2ocr",
-                "--language",
-                "pt",
-                "--level1-toc",
-                "//h:h1",
-            ],
+            cmd,
             capture_output=True,
             text=True,
             check=True,
@@ -446,7 +450,7 @@ def process_pdfs_with_ocr(
             if generate_epub:
                 epub_path = os.path.join(epub_dir, base_name + ".epub")
                 success, times["epub"], output = convert_docx_to_epub(
-                    docx_path, epub_path
+                    docx_path, epub_path, lang
                 )
 
                 if success:
@@ -618,7 +622,7 @@ def save_as_html(text, output_path):
 def parse_arguments():
     """Configure and parse command line arguments"""
     parser = argparse.ArgumentParser(
-    description=f"pdf2ocr v{__version__} - A CLI tool to apply OCR on PDF files and export to multiple formats."
+        description="Python script to apply OCR on PDF files and generate output in DOCX, searchable PDF, HTML and EPUB formats."
     )
     parser.add_argument("source_dir", help="Source folder with PDF files")
     parser.add_argument(
@@ -655,11 +659,6 @@ def parse_arguments():
         help="Display only final conversion summary (short output mode)",
     )
     parser.add_argument("--logfile", help="Path to log file (optional)")
-    parser.add_argument(
-    "--version",
-    action="version",
-    version=f"pdf2ocr {__version__}"
-    )
     return parser.parse_args()
 
 
