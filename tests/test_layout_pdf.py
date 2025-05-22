@@ -1,7 +1,6 @@
 """Tests for layout-preserving PDF generation."""
 
 import subprocess
-from pathlib import Path
 
 
 def test_preserve_layout_pdf(tmp_path):

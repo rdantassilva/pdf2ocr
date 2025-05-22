@@ -19,7 +19,7 @@ def test_pdf_generated(tmp_path):
     )
 
     # Setup logger for testing
-    logger = setup_logging(quiet=True)
+    logger = setup_logging(log_path=None, quiet=True)
 
     # Run the process
     process_pdfs_with_ocr(config, logger)
