@@ -40,11 +40,11 @@ def setup_logging(
     return log_file
 
 
-def log_message(logger, level: str, message: str, quiet: bool = False) -> None:
-    """Log a message to both console and file if logger is provided.
+def log_message(log_file, level: str, message: str, quiet: bool = False) -> None:
+    """Log a message to both console and file if log_file is provided.
 
     Args:
-        logger: TextIOWrapper instance or None
+        log_file: TextIOWrapper instance or None
         level: Log level (INFO, ERROR, etc)
         message: Message to log
         quiet: Whether to suppress console output
@@ -55,8 +55,8 @@ def log_message(logger, level: str, message: str, quiet: bool = False) -> None:
     if message == "" and _last_message == "":
         return
 
-    # Always log to file if logger is provided
-    if logger:
+    # Always log to file if log_file is provided
+    if log_file:
         # Add timestamp and level for file logging
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_line = f"{timestamp} - {level} - {message}\n"
@@ -74,8 +74,8 @@ def log_message(logger, level: str, message: str, quiet: bool = False) -> None:
         elif "Total time for file:" in message:
             log_line += "\n"
 
-        logger.write(log_line)
-        logger.flush()  # Ensure message is written immediately
+        log_file.write(log_line)
+        log_file.flush()  # Ensure message is written immediately
 
     # Only print to console if not quiet
     if not quiet:
@@ -110,26 +110,26 @@ def close_logging(log_file: Optional[TextIO]) -> None:
 
 
 def log_process_start(
-    logger: TextIO, filename: str, current: int, total: int, quiet: bool = False
+    log_file: TextIO, filename: str, current: int, total: int, quiet: bool = False
 ) -> None:
     """Log the start of processing a file."""
     msg = f"Processing file {current:02d} of {total:02d}: {filename}"
-    log_message(logger, "INFO", msg, quiet=quiet)
+    log_message(log_file, "INFO", msg, quiet=quiet)
 
 
 def log_conversion_summary(
-    logger: TextIO, total_files: int, total_time: float, quiet: bool = False
+    log_file: TextIO, total_files: int, total_time: float, quiet: bool = False
 ) -> None:
     """Log conversion summary."""
-    log_message(logger, "HEADER", "=== Conversion Summary ===", quiet=quiet)
-    log_message(logger, "INFO", f"Total files processed: {total_files}", quiet=quiet)
+    log_message(log_file, "HEADER", "=== Conversion Summary ===", quiet=quiet)
+    log_message(log_file, "INFO", f"Total files processed: {total_files}", quiet=quiet)
     log_message(
-        logger, "INFO", f"Total execution time: {total_time:.2f} seconds", quiet=quiet
+        log_file, "INFO", f"Total execution time: {total_time:.2f} seconds", quiet=quiet
     )
     if total_files > 0:
         avg_time = total_time / total_files
         log_message(
-            logger,
+            log_file,
             "INFO",
             f"Average time per file: {avg_time:.2f} seconds",
             quiet=quiet,

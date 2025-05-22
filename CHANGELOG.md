@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Fixed HTML template to properly interpolate title using f-strings.
 - Unified logging approach with better control over quiet and summary modes.
 - Improved progress reporting for parallel processing.
+- Renamed `logger` parameter to `log_file` in logging functions for better clarity.
 
 ### 🐛 Fixed
 - Removed redundant subprocess arguments in EPUB conversion.
