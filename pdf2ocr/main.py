@@ -69,7 +69,7 @@ from pdf2ocr.logging_config import (log_conversion_summary, log_process_complete
 from pdf2ocr.ocr import (extract_text_from_pdf, validate_tesseract_language,
                         process_pdf_with_ocr, convert_image_to_pdf,
                         make_invisible_text_layer)
-from pdf2ocr.utils import check_dependencies
+from pdf2ocr.utils import check_dependencies, timing_context
 
 
 def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
@@ -103,55 +103,54 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
             log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
             return
         
-        total_start = time.perf_counter()
-        for idx, filename in enumerate(pdf_files, start=1):
-            file_start = time.perf_counter()
-            log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
-            
-            try:
-                pdf_path = os.path.join(config.source_dir, filename)
-                base_name = os.path.splitext(filename)[0]
+        with timing_context("Total execution", logger) as get_total_time:
+            for idx, filename in enumerate(pdf_files, start=1):
+                log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
                 
-                # Process PDF pages with OCR
-                pages = process_pdf_with_ocr(pdf_path, config.lang, config.dpi, logger)
-                page_texts = [text for _, text in pages]
-                
-                # Generate output files
-                times = {}
-                
-                if config.generate_pdf:
-                    pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
-                    times["pdf"] = save_as_pdf(page_texts, pdf_path, base_name)
-                    log_message(logger, "INFO", f"OCR PDF created in {times['pdf']:.2f} seconds", quiet=config.quiet)
-                
-                if config.generate_html:
-                    html_path = os.path.join(config.html_dir, base_name + ".html")
-                    times["html"] = save_as_html(page_texts, html_path)
-                    log_message(logger, "INFO", f"HTML created in {times['html']:.2f} seconds", quiet=config.quiet)
-                
-                if config.generate_docx:
-                    docx_path = os.path.join(config.docx_dir, base_name + ".docx")
-                    times["docx"] = save_as_docx(page_texts, docx_path)
-                    log_message(logger, "INFO", f"DOCX created in {times['docx']:.2f} seconds", quiet=config.quiet)
+                try:
+                    pdf_path = os.path.join(config.source_dir, filename)
+                    base_name = os.path.splitext(filename)[0]
                     
-                    if config.generate_epub:
-                        epub_path = os.path.join(config.epub_dir, base_name + ".epub")
-                        success, epub_time, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
-                        if success:
-                            times["epub"] = epub_time
-                            log_message(logger, "INFO", f"EPUB created in {times['epub']:.2f} seconds", quiet=config.quiet)
-                        else:
-                            log_message(logger, "ERROR", f"Failed to create EPUB: {output}", quiet=config.quiet)
-                
-                file_time = time.perf_counter() - file_start
-                log_process_complete(logger, file_time, quiet=config.quiet)
-                
-            except Exception as e:
-                log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
-                continue
+                    with timing_context(f"Processing {filename}", logger) as get_file_time:
+                        # Process PDF pages with OCR
+                        pages = process_pdf_with_ocr(pdf_path, config.lang, config.dpi, logger)
+                        page_texts = [text for _, text in pages]
+                        
+                        # Generate output files
+                        if config.generate_pdf:
+                            pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
+                            with timing_context("PDF generation", logger) as get_pdf_time:
+                                save_as_pdf(page_texts, pdf_path, base_name)
+                            log_message(logger, "INFO", f"OCR PDF created in {get_pdf_time():.2f} seconds", quiet=config.quiet)
+                        
+                        if config.generate_html:
+                            html_path = os.path.join(config.html_dir, base_name + ".html")
+                            with timing_context("HTML generation", logger) as get_html_time:
+                                save_as_html(page_texts, html_path)
+                            log_message(logger, "INFO", f"HTML created in {get_html_time():.2f} seconds", quiet=config.quiet)
+                        
+                        if config.generate_docx:
+                            docx_path = os.path.join(config.docx_dir, base_name + ".docx")
+                            with timing_context("DOCX generation", logger) as get_docx_time:
+                                save_as_docx(page_texts, docx_path)
+                            log_message(logger, "INFO", f"DOCX created in {get_docx_time():.2f} seconds", quiet=config.quiet)
+                            
+                            if config.generate_epub:
+                                epub_path = os.path.join(config.epub_dir, base_name + ".epub")
+                                with timing_context("EPUB generation", logger) as get_epub_time:
+                                    success, _, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
+                                    if success:
+                                        log_message(logger, "INFO", f"EPUB created in {get_epub_time():.2f} seconds", quiet=config.quiet)
+                                    else:
+                                        log_message(logger, "ERROR", f"Failed to create EPUB: {output}", quiet=config.quiet)
+                    
+                    log_process_complete(logger, get_file_time(), quiet=config.quiet)
+                    
+                except Exception as e:
+                    log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
+                    continue
         
-        total_time = time.perf_counter() - total_start
-        log_conversion_summary(logger, len(pdf_files), total_time, quiet=config.quiet)
+        log_conversion_summary(logger, len(pdf_files), get_total_time(), quiet=config.quiet)
         
     except Exception as e:
         log_message(logger, "ERROR", f"Error processing PDFs: {str(e)}", quiet=config.quiet)
@@ -184,72 +183,68 @@ def process_layout_pdf_only(config: ProcessingConfig, logger: logging.Logger):
             log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
             return
         
-        total_start = time.perf_counter()
-        for idx, filename in enumerate(pdf_files, start=1):
-            file_start = time.perf_counter()
-            log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
-            
-            try:
-                pdf_path = os.path.join(config.source_dir, filename)
-                base_name = os.path.splitext(filename)[0]
-                out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
+        with timing_context("Total execution", logger) as get_total_time:
+            for idx, filename in enumerate(pdf_files, start=1):
+                log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
                 
-                # Convert PDF to images with lower DPI for layout preservation
-                pages = convert_from_path(pdf_path, dpi=200)
-                
-                # Process each page with OCR
-                ocr_start = time.perf_counter()
-                pdf_pages = []
-                
-                # Create temporary directory for processing
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    for page_num, page_img in enumerate(tqdm(pages, desc="Processing pages", unit="page")):
-                        # Save image to temporary file
-                        img_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                        page_img.save(img_path, "PNG")
+                try:
+                    pdf_path = os.path.join(config.source_dir, filename)
+                    base_name = os.path.splitext(filename)[0]
+                    out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
+                    
+                    with timing_context(f"Processing {filename}", logger) as get_file_time:
+                        # Convert PDF to images with lower DPI for layout preservation
+                        pages = convert_from_path(pdf_path, dpi=200)
                         
-                        # Generate PDF with OCR using tesseract
-                        pdf_path = os.path.join(temp_dir, f"page_{page_num}")
-                        cmd = [
-                            "tesseract",
-                            img_path,
-                            pdf_path,
-                            "-l", config.lang,
-                            "--dpi", "200",
-                            "pdf"
-                        ]
-                        subprocess.run(cmd, check=True, capture_output=True)
+                        # Process each page with OCR
+                        pdf_pages = []
                         
-                        # Read generated PDF
-                        with open(f"{pdf_path}.pdf", "rb") as f:
-                            pdf_pages.append(f.read())
-                
-                ocr_time = time.perf_counter() - ocr_start
-                log_message(logger, "INFO", f"OCR completed in {ocr_time:.2f} seconds", quiet=config.quiet)
-                
-                # Merge PDF pages
-                merge_start = time.perf_counter()
-                writer = PdfWriter()
-                
-                for page_pdf in pdf_pages:
-                    reader = PdfReader(io.BytesIO(page_pdf))
-                    writer.add_page(reader.pages[0])
-                
-                with open(out_path, "wb") as fout:
-                    writer.write(fout)
-                
-                pdf_time = time.perf_counter() - merge_start
-                log_message(logger, "INFO", f"Layout-preserving PDF created in {pdf_time:.2f} seconds", quiet=config.quiet)
-                
-                file_time = time.perf_counter() - file_start
-                log_process_complete(logger, file_time, quiet=config.quiet)
-                
-            except Exception as e:
-                log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
-                continue
+                        # Create temporary directory for processing
+                        with tempfile.TemporaryDirectory() as temp_dir:
+                            with timing_context("OCR processing", logger) as get_ocr_time:
+                                for page_num, page_img in enumerate(tqdm(pages, desc="Processing pages", unit="page")):
+                                    # Save image to temporary file
+                                    img_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                                    page_img.save(img_path, "PNG")
+                                    
+                                    # Generate PDF with OCR using tesseract
+                                    pdf_path = os.path.join(temp_dir, f"page_{page_num}")
+                                    cmd = [
+                                        "tesseract",
+                                        img_path,
+                                        pdf_path,
+                                        "-l", config.lang,
+                                        "--dpi", "200",
+                                        "pdf"
+                                    ]
+                                    subprocess.run(cmd, check=True, capture_output=True)
+                                    
+                                    # Read generated PDF
+                                    with open(f"{pdf_path}.pdf", "rb") as f:
+                                        pdf_pages.append(f.read())
+                            
+                            log_message(logger, "INFO", f"OCR completed in {get_ocr_time():.2f} seconds", quiet=config.quiet)
+                            
+                            # Merge PDF pages
+                            with timing_context("PDF merging", logger) as get_merge_time:
+                                writer = PdfWriter()
+                                
+                                for page_pdf in pdf_pages:
+                                    reader = PdfReader(io.BytesIO(page_pdf))
+                                    writer.add_page(reader.pages[0])
+                                
+                                with open(out_path, "wb") as fout:
+                                    writer.write(fout)
+                            
+                            log_message(logger, "INFO", f"Layout-preserving PDF created in {get_merge_time():.2f} seconds", quiet=config.quiet)
+                    
+                    log_process_complete(logger, get_file_time(), quiet=config.quiet)
+                    
+                except Exception as e:
+                    log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
+                    continue
         
-        total_time = time.perf_counter() - total_start
-        log_conversion_summary(logger, len(pdf_files), total_time, quiet=config.quiet)
+        log_conversion_summary(logger, len(pdf_files), get_total_time(), quiet=config.quiet)
         
     except Exception as e:
         log_message(logger, "ERROR", f"Error processing layout PDF: {str(e)}", quiet=config.quiet)
