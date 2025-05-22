@@ -49,38 +49,18 @@ def save_as_docx(text, output_path):
             document.add_paragraph(f"Page {page_num}", style="Subtitle")
             
             # Process paragraphs in this page
-            paragraphs = page_text.split("\n\n")
+            paragraphs = page_text.strip().split("\n\n")
             for para in paragraphs:
-                if not para.strip():
-                    continue
-                
-                # Create a new paragraph
-                p = document.add_paragraph()
-                
-                # Join lines with spaces for better readability
-                lines = [line.strip() for line in para.split("\n")]
-                clean_text = " ".join(line for line in lines if line)
-                p.add_run(clean_text)
-                
-                # Add extra spacing after each paragraph
-                p.paragraph_format.space_after = 12
+                clean_para = para.strip().replace("\n", " ")
+                if clean_para:
+                    document.add_paragraph(clean_para)
     else:
         # Process single text string
-        paragraphs = text.split("\n\n")
+        paragraphs = text.strip().split("\n\n")
         for para in paragraphs:
-            if not para.strip():
-                continue
-                
-            # Create a new paragraph
-            p = document.add_paragraph()
-            
-            # Join lines with spaces for better readability
-            lines = [line.strip() for line in para.split("\n")]
-            clean_text = " ".join(line for line in lines if line)
-            p.add_run(clean_text)
-            
-            # Add extra spacing after each paragraph
-            p.paragraph_format.space_after = 12
+            clean_para = para.strip().replace("\n", " ")
+            if clean_para:
+                document.add_paragraph(clean_para)
 
     document.save(output_path)
     return time.perf_counter() - start

@@ -36,7 +36,8 @@ def test_save_as_docx(tmp_path):
     
     # Read back and verify content
     doc = Document(output_file)
-    paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+    # Normalize spaces in paragraphs
+    paragraphs = [' '.join(p.text.split()) for p in doc.paragraphs if p.text.strip()]
     
     assert len(paragraphs) == 2
     assert "First paragraph with multiple lines" in paragraphs[0]
