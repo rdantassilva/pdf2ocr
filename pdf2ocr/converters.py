@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 import time
+from concurrent import futures
 from typing import List
 
 from docx import Document
@@ -17,6 +18,8 @@ from tqdm import tqdm
 
 from pdf2ocr.config import ProcessingConfig
 from pdf2ocr.logging_config import log_message, setup_logging
+from pdf2ocr.ocr import process_pdf_with_ocr
+from pdf2ocr.state import shutdown_requested
 from pdf2ocr.utils import timing_context
 
 

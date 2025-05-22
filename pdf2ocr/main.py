@@ -54,9 +54,7 @@ from pdf2ocr.config import ProcessingConfig
 from pdf2ocr.converters import (process_pdfs_with_ocr, process_layout_pdf_only)
 from pdf2ocr.logging_config import close_logging, log_message, setup_logging
 from pdf2ocr.ocr import validate_tesseract_language
-
-# Global flag for graceful shutdown
-shutdown_requested = False
+from pdf2ocr.state import shutdown_requested
 
 
 def signal_handler(signum, frame):
