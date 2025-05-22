@@ -41,6 +41,12 @@ Generate layout-preserving OCR PDFs only:
 pdf2ocr ./pdfs --pdf --preserve-layout --dest-dir ./output --logfile pdf2ocr.log
 ```
 
+Process multiple files in parallel with 8 workers:
+
+```bash
+pdf2ocr ./pdfs --pdf --html --epub --workers 8 --logfile pdf2ocr.log
+```
+
 > ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
 
 ---
@@ -169,8 +175,10 @@ pdf2ocr -h
 - `--html`: Generate HTML files.
 - `--preserve-layout`: Preserve the visual layout of original documents (PDF only).
 - `--lang`: Set the OCR language code (default: por). Use tesseract --list-langs to check installed options.
-- `--short-output`: Show only final summary output (quiet mode).
+- `--quiet`: Run silently without progress output.
+- `--summary`: Display only final conversion summary.
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
+- `--workers`: Number of parallel workers for processing (default: 2).
 - `--version`: show program's version number and exit
 
 ---

@@ -50,6 +50,7 @@ import io
 import os
 import time
 import sys
+import signal
 from concurrent import futures
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter, PdfMerger
@@ -72,6 +73,21 @@ from pdf2ocr.ocr import (extract_text_from_pdf, validate_tesseract_language,
                         make_invisible_text_layer)
 from pdf2ocr.utils import check_dependencies, timing_context
 
+# Global flag for graceful shutdown
+shutdown_requested = False
+
+def signal_handler(signum, frame):
+    """Handle interrupt signals for graceful shutdown"""
+    global shutdown_requested
+    if shutdown_requested:  # If CTRL+C is pressed twice, force exit
+        log_message(None, "WARNING", "\nForce quitting...", quiet=False)
+        sys.exit(1)
+    shutdown_requested = True
+    log_message(None, "WARNING", "\nShutdown requested. Waiting for current tasks to complete...", quiet=False)
+
+# Register signal handlers
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
 
 def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
     """Process a single PDF file.
@@ -156,6 +172,8 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
 def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
     """Main function that orchestrates the entire conversion process"""
     
+    global shutdown_requested
+    
     # Validate configuration
     config.validate()
     
@@ -206,50 +224,64 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
                 }
                 
                 # Process results as they complete
-                for future in futures.as_completed(future_to_file):
-                    filename = future_to_file[future]
-                    completed += 1
-                    
-                    try:
-                        success, processing_time, error, log_messages = future.result()
+                try:
+                    for future in futures.as_completed(future_to_file):
+                        if shutdown_requested:
+                            executor.shutdown(wait=False)
+                            break
+                            
+                        filename = future_to_file[future]
+                        completed += 1
                         
-                        # Log file start
-                        log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=config.quiet)
-                        
-                        # Write all log messages from the child process
-                        for level, message in log_messages:
-                            log_message(logger, level, "  " + message, quiet=config.quiet)
-                        
-                        if success:
-                            successful += 1
-                            log_process_complete(logger, processing_time, quiet=config.quiet)
-                            log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
-                        else:
+                        try:
+                            success, processing_time, error, log_messages = future.result()
+                            
+                            # Log file start
+                            log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=config.quiet)
+                            
+                            # Write all log messages from the child process
+                            for level, message in log_messages:
+                                log_message(logger, level, "  " + message, quiet=config.quiet)
+                            
+                            if success:
+                                successful += 1
+                                log_process_complete(logger, processing_time, quiet=config.quiet)
+                                log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
+                            else:
+                                failed += 1
+                                if error:
+                                    errors.append((filename, error))
+                                    log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=config.quiet)
+                            
+                            # Add empty line for readability
+                            log_message(logger, "INFO", "", quiet=config.quiet)
+                            
+                        except Exception as e:
                             failed += 1
-                            if error:
-                                errors.append((filename, error))
-                                log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=config.quiet)
-                        
-                        # Add empty line for readability
-                        log_message(logger, "INFO", "", quiet=config.quiet)
-                        
-                    except Exception as e:
-                        failed += 1
-                        error_msg = f"Error processing {filename}: {str(e)}"
-                        log_message(logger, "ERROR", error_msg, quiet=config.quiet)
-                        errors.append((filename, error_msg))
+                            error_msg = f"Error processing {filename}: {str(e)}"
+                            log_message(logger, "ERROR", error_msg, quiet=config.quiet)
+                            errors.append((filename, error_msg))
+                            
+                except KeyboardInterrupt:
+                    executor.shutdown(wait=False)
+                    log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=config.quiet)
+                    return
             
+            if shutdown_requested:
+                log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=config.quiet)
+                return
+                
             # Log final summary
             total_time = get_total_time()
             summary = [
                 f"\nProcessing Summary:",
                 f"----------------",
-                f"Files processed: {len(pdf_files)}",
+                f"Files processed: {completed}",
                 f"Total time: {total_time:.2f} seconds"
             ]
             
-            if len(pdf_files) > 0:
-                avg_time = total_time / len(pdf_files)
+            if completed > 0:
+                avg_time = total_time / completed
                 summary.append(f"Average time per file: {avg_time:.2f} seconds")
             
             summary.extend([
@@ -505,7 +537,7 @@ def parse_arguments():
         help="Display only final conversion summary",
     )
     parser.add_argument(
-        "--log",
+        "--logfile",
         help="Path to log file (optional)",
         default=None,
     )
@@ -536,7 +568,7 @@ def main():
             preserve_layout=args.preserve_layout,
             quiet=args.quiet,
             summary_output=args.summary,
-            log_path=args.log,
+            log_path=args.logfile,
             workers=args.workers
         )
         
