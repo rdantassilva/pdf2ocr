@@ -112,12 +112,6 @@ def log_process_start(logger: TextIO, filename: str, current: int, total: int, q
     log_message(logger, "INFO", msg, quiet=quiet)
 
 
-def log_process_complete(logger: TextIO, elapsed: float, quiet: bool = False) -> None:
-    """Log completion of file processing."""
-    msg = f"Total time for file: {elapsed:.2f} seconds"
-    log_message(logger, "INFO", msg, quiet=quiet)
-
-
 def log_conversion_summary(logger: TextIO, total_files: int, total_time: float, quiet: bool = False) -> None:
     """Log conversion summary."""
     log_message(logger, "HEADER", "=== Conversion Summary ===", quiet=quiet)

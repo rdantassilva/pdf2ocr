@@ -65,9 +65,8 @@ from pdf2ocr import __version__
 from pdf2ocr.config import ProcessingConfig
 from pdf2ocr.converters import (convert_docx_to_epub, save_as_docx, save_as_html,
                                save_as_pdf)
-from pdf2ocr.logging_config import (log_conversion_summary, log_process_complete,
-                                  log_process_start, setup_logging, close_logging,
-                                  log_message)
+from pdf2ocr.logging_config import (log_conversion_summary, log_process_start,
+                                  setup_logging, close_logging, log_message)
 from pdf2ocr.ocr import (extract_text_from_pdf, validate_tesseract_language,
                         process_pdf_with_ocr, convert_image_to_pdf,
                         make_invisible_text_layer)
@@ -110,33 +109,34 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
         with timing_context(f"Processing {filename}", logger) as get_file_time:
             try:
                 # Process PDF pages with OCR
-                pages = process_pdf_with_ocr(pdf_path, config.lang, logger, config.quiet, config.summary_output)
-                page_texts = [text for _, text in pages]
+                with timing_context("OCR processing", None) as get_ocr_time:  # Remove logger to avoid immediate logging
+                    pages = process_pdf_with_ocr(pdf_path, config.lang, logger, config.quiet, config.summary_output)
+                    page_texts = [text for _, text in pages]
                 
                 # Generate output files based on configuration
                 output_files = []
                 
                 if config.generate_pdf:
                     pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
-                    with timing_context("PDF generation", logger) as get_pdf_time:
+                    with timing_context("PDF generation", None) as get_pdf_time:
                         save_as_pdf(page_texts, pdf_path, base_name)
                         output_files.append(("PDF", get_pdf_time()))
                 
                 if config.generate_html:
                     html_path = os.path.join(config.html_dir, base_name + ".html")
-                    with timing_context("HTML generation", logger) as get_html_time:
+                    with timing_context("HTML generation", None) as get_html_time:
                         save_as_html(page_texts, html_path)
                         output_files.append(("HTML", get_html_time()))
                 
                 if config.generate_docx:
                     docx_path = os.path.join(config.docx_dir, base_name + ".docx")
-                    with timing_context("DOCX generation", logger) as get_docx_time:
+                    with timing_context("DOCX generation", None) as get_docx_time:
                         save_as_docx(page_texts, docx_path)
                         output_files.append(("DOCX", get_docx_time()))
                     
                     if config.generate_epub:
                         epub_path = os.path.join(config.epub_dir, base_name + ".epub")
-                        with timing_context("EPUB generation", logger) as get_epub_time:
+                        with timing_context("EPUB generation", None) as get_epub_time:
                             success, _, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
                             # Log ebook-convert output only to file (force quiet=True)
                             if output and logger:
@@ -148,18 +148,19 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
                                 raise Exception(f"EPUB conversion failed: {output}")
                 
                 # Generate log messages for all successful outputs
+                log_messages = [("INFO", f"  OCR processing took {get_ocr_time.duration:.2f} seconds")]  # Add OCR timing first
                 log_messages.extend([
-                    ("INFO", f"{format} created in {time:.2f} seconds")
+                    ("INFO", f"  {format} created in {time:.2f} seconds")
                     for format, time in output_files
                 ])
                 
-                return True, get_file_time(), None, log_messages
+                return True, get_file_time.stop(), None, log_messages
                 
             except Exception as e:
                 # Add context to the error message
                 error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
                 log_messages.append(("ERROR", error_msg))
-                return False, get_file_time(), error_msg, log_messages
+                return False, get_file_time.stop(), error_msg, log_messages
 
     except Exception as e:
         # Handle setup/initialization errors
@@ -257,7 +258,6 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
                             
                             if success:
                                 successful += 1
-                                log_process_complete(logger, processing_time, quiet=not should_show_message())
                                 log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=not should_show_message())
                             else:
                                 failed += 1
@@ -350,7 +350,7 @@ def process_single_layout_pdf(filename: str, config: ProcessingConfig) -> tuple:
             
             # Create temporary directory for processing
             with tempfile.TemporaryDirectory() as temp_dir:
-                with timing_context("OCR processing", logger) as get_ocr_time:
+                with timing_context("OCR processing", None) as get_ocr_time:
                     for page_num, page_img in enumerate(tqdm(pages, desc="Processing pages", unit="page")):
                         # Save image to temporary file
                         img_path = os.path.join(temp_dir, f"page_{page_num}.png")
@@ -372,10 +372,10 @@ def process_single_layout_pdf(filename: str, config: ProcessingConfig) -> tuple:
                         with open(f"{pdf_path}.pdf", "rb") as f:
                             pdf_pages.append(f.read())
                 
-                log_messages.append(("INFO", f"OCR completed in {get_ocr_time():.2f} seconds"))
+                log_messages = [("INFO", f"  OCR processing took {get_ocr_time.duration:.2f} seconds")]
                 
                 # Merge PDF pages
-                with timing_context("PDF merging", logger) as get_merge_time:
+                with timing_context("PDF merging", None) as get_merge_time:
                     writer = PdfWriter()
                     
                     for page_pdf in pdf_pages:
@@ -385,9 +385,9 @@ def process_single_layout_pdf(filename: str, config: ProcessingConfig) -> tuple:
                     with open(out_path, "wb") as fout:
                         writer.write(fout)
                 
-                log_messages.append(("INFO", f"Layout-preserving PDF created in {get_merge_time():.2f} seconds"))
+                log_messages.append(("INFO", f"  Layout-preserving PDF created in {get_merge_time.duration:.2f} seconds"))
             
-            return True, get_file_time(), None, log_messages
+            return True, get_file_time.stop(), None, log_messages
             
     except Exception as e:
         error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
@@ -460,8 +460,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger: logging.Logger):
                         
                         if success:
                             successful += 1
-                            log_process_complete(logger, processing_time, quiet=config.quiet)
-                            log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
+                            log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=not should_show_message())
                         else:
                             failed += 1
                             if error:

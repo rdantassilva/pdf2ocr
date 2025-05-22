@@ -11,6 +11,25 @@ from logging import Logger
 from pdf2ocr.logging_config import setup_logging, log_message
 
 
+class Timer:
+    """A simple timer class that can be pickled."""
+    def __init__(self):
+        self.start_time = time.perf_counter()
+        self.duration = None
+    
+    def stop(self):
+        """Stop the timer and return the duration."""
+        if self.duration is None:  # Only update if not already stopped
+            self.duration = time.perf_counter() - self.start_time
+        return self.duration
+    
+    def __call__(self):
+        """Get the current duration without stopping."""
+        if self.duration is not None:  # If already stopped, return stored duration
+            return self.duration
+        return time.perf_counter() - self.start_time
+
+
 def detect_package_manager() -> Optional[str]:
     """Detect the system's package manager.
     
@@ -58,24 +77,27 @@ def check_dependencies(generate_epub=False):
 
 
 @contextmanager
-def timing_context(operation_name: str, logger: Optional[Logger] = None) -> float:
+def timing_context(operation_name: str, logger: Optional[Logger] = None, log_timing: bool = False) -> Timer:
     """Context manager for timing operations.
     
     Args:
         operation_name: Name of the operation being timed
         logger: Optional logger to log the timing information
+        log_timing: Whether to log the timing message (default: False)
         
-    Returns:
-        float: Duration of the operation in seconds
+    Yields:
+        Timer: A Timer object that can be used to get the duration
         
     Example:
-        with timing_context("PDF Processing", logger) as duration:
+        with timing_context("PDF Processing", logger) as timer:
             process_pdf(file)
-            print(f"Operation took {duration:.2f} seconds")
+            # timer() will give the current duration
+            # timer.stop() will give the final duration
     """
-    start_time = time.perf_counter()
+    timer = Timer()
     try:
-        yield lambda: time.perf_counter() - start_time
+        yield timer
     finally:
-        duration = time.perf_counter() - start_time
-        return duration 
+        duration = timer.stop()
+        if logger and log_timing:
+            log_message(logger, "INFO", f"  {operation_name} took {duration:.2f} seconds", quiet=False)
