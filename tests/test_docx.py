@@ -1,4 +1,8 @@
+"""Tests for DOCX generation."""
+
 import subprocess
+from pathlib import Path
+
 
 def test_docx_generated(tmp_path):
     input_folder = "tests/data/"

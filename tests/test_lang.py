@@ -1,4 +1,8 @@
+"""Tests for language handling."""
+
 import subprocess
+from pathlib import Path
+
 
 def test_lang_argument(tmp_path):
     input_folder = "tests/data/"
@@ -14,4 +18,4 @@ def test_lang_argument(tmp_path):
     print("STDERR:", result.stderr)
 
     assert result.returncode == 0
-    assert "OCR PDF created" in result.stdout
+    assert "Using Tesseract language model: por (Portuguese)" in result.stdout

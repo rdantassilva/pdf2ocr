@@ -24,7 +24,7 @@ setup(
     'reportlab>=4.0.0',
     'tqdm>=4.45.0',
     'Pillow>=9.0.0',
-    'PyPDF2>=3.0.0'
+    'pypdf>=3.15.0'
     ],
     entry_points={
         'console_scripts': [
