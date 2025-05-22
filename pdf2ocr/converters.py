@@ -40,20 +40,31 @@ def save_as_docx(text, output_path):
         # Add title as heading for multi-page documents
         document.add_heading(title, level=1)
         
+        last_page_had_content = False
+        
         # Process each page
         for page_num, page_text in enumerate(text, 1):
-            if page_num > 1:
+            # Check if this page has any real content
+            has_content = bool(page_text.strip())
+            
+            # Only add page break if both the last page and this page have content
+            if page_num > 1 and has_content and last_page_had_content:
                 document.add_page_break()
             
-            # Add page number
-            document.add_paragraph(f"Page {page_num}", style="Subtitle")
-            
-            # Process paragraphs in this page
-            paragraphs = page_text.strip().split("\n\n")
-            for para in paragraphs:
-                clean_para = para.strip().replace("\n", " ")
-                if clean_para:
-                    document.add_paragraph(clean_para)
+            if has_content:
+                # Add page number
+                document.add_paragraph(f"Page {page_num}", style="Subtitle")
+                
+                # Process paragraphs in this page
+                paragraphs = page_text.strip().split("\n\n")
+                for para in paragraphs:
+                    clean_para = para.strip().replace("\n", " ")
+                    if clean_para:
+                        document.add_paragraph(clean_para)
+                
+                last_page_had_content = True
+            else:
+                last_page_had_content = False
     else:
         # Process single text string
         paragraphs = text.strip().split("\n\n")
