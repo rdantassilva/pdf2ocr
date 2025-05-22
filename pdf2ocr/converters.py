@@ -40,31 +40,15 @@ def save_as_docx(text, output_path):
         # Add title as heading for multi-page documents
         document.add_heading(title, level=1)
         
-        last_page_had_content = False
+        # Join all pages with double newlines and process as a single text
+        full_text = "\n\n".join(text)
         
-        # Process each page
-        for page_num, page_text in enumerate(text, 1):
-            # Check if this page has any real content
-            has_content = bool(page_text.strip())
-            
-            # Only add page break if both the last page and this page have content
-            if page_num > 1 and has_content and last_page_had_content:
-                document.add_page_break()
-            
-            if has_content:
-                # Add page number
-                document.add_paragraph(f"Page {page_num}", style="Subtitle")
-                
-                # Process paragraphs in this page
-                paragraphs = page_text.strip().split("\n\n")
-                for para in paragraphs:
-                    clean_para = para.strip().replace("\n", " ")
-                    if clean_para:
-                        document.add_paragraph(clean_para)
-                
-                last_page_had_content = True
-            else:
-                last_page_had_content = False
+        # Process paragraphs
+        paragraphs = full_text.strip().split("\n\n")
+        for para in paragraphs:
+            clean_para = para.strip().replace("\n", " ")
+            if clean_para:
+                document.add_paragraph(clean_para)
     else:
         # Process single text string
         paragraphs = text.strip().split("\n\n")
@@ -112,7 +96,14 @@ def save_as_pdf(text_pages, output_path, filename):
     c = canvas.Canvas(output_path, pagesize=A4)
     width, height = A4
 
-    for idx, page_text in enumerate(text_pages, start=1):
+    # Skip empty pages at the start
+    page_offset = 0
+    for idx, page_text in enumerate(text_pages):
+        if page_text.strip():
+            break
+        page_offset += 1
+
+    for idx, page_text in enumerate(text_pages[page_offset:], start=1):
         x = 2 * cm  # Left margin
         y = height - 3 * cm  # Top margin
 
@@ -182,8 +173,15 @@ def save_as_html(text, output_path):
             # Add title for multi-page documents
             html_content += f"\n<h1>{title}</h1>\n"
             
+            # Skip empty pages at the start
+            page_offset = 0
+            for idx, page_text in enumerate(text):
+                if page_text.strip():
+                    break
+                page_offset += 1
+            
             # Process each page
-            for page_num, page_text in enumerate(text, 1):
+            for page_num, page_text in enumerate(text[page_offset:], start=1):
                 html_content += f'\n<div class="page">\n'
                 html_content += f'<div class="page-number">Page {page_num}</div>\n'
                 
