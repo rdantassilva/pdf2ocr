@@ -53,7 +53,7 @@ def save_as_docx(text: List[str], output_path: str) -> float:
     return time.perf_counter() - start
 
 
-def save_as_pdf(text_pages, output_path, filename):
+def save_as_pdf(text_pages, output_path):
     """Creates a new PDF with OCR-extracted text in a clean, standardized format.
 
     This function generates a new PDF document that focuses on text readability
