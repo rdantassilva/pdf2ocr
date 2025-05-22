@@ -1,9 +1,6 @@
 """Tests for language handling."""
 
 import subprocess
-from pathlib import Path
-
-
 def test_lang_argument(tmp_path):
     input_folder = "tests/data/"
     output_dir = tmp_path / "output"
