@@ -6,12 +6,13 @@ from datetime import datetime
 from typing import Optional, TextIO
 
 
-def setup_logging(log_path: Optional[str] = None, quiet: bool = False) -> TextIO:
+def setup_logging(log_path: Optional[str] = None, quiet: bool = False, is_worker: bool = False) -> TextIO:
     """Set up logging to file with line buffering.
     
     Args:
         log_path: Optional path to log file
         quiet: Whether to suppress console output
+        is_worker: Whether this is a worker process
         
     Returns:
         TextIO: Log file handle if log_path is provided, None otherwise
@@ -25,8 +26,11 @@ def setup_logging(log_path: Optional[str] = None, quiet: bool = False) -> TextIO
             os.makedirs(dir_name, exist_ok=True)
         
         # Open log file with line buffering
-        log_file = open(log_path, "w", encoding="utf-8", buffering=1)
-        log_file.write("=== Process Started ===\n\n")
+        log_file = open(log_path, "a", encoding="utf-8", buffering=1)
+        
+        # Only write the process start header for the main process
+        if not is_worker:
+            log_file.write("=== Process Started ===\n\n")
     
     return log_file
 

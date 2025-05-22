@@ -29,6 +29,7 @@ class ProcessingConfig:
         quiet: Run silently without progress output
         summary_output: Display only final conversion summary
         log_path: Path to log file (optional)
+        workers: Number of parallel workers for processing
     """
     source_dir: str
     dest_dir: Optional[str] = None
@@ -42,6 +43,7 @@ class ProcessingConfig:
     quiet: bool = False
     summary_output: bool = False
     log_path: Optional[str] = None
+    workers: int = 2
 
     def __post_init__(self):
         # Initialize derived paths

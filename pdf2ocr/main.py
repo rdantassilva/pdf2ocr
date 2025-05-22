@@ -50,6 +50,7 @@ import io
 import os
 import time
 import sys
+from concurrent import futures
 from pdf2image import convert_from_path
 from pypdf import PdfReader, PdfWriter, PdfMerger
 from pytesseract import image_to_pdf_or_hocr
@@ -70,6 +71,86 @@ from pdf2ocr.ocr import (extract_text_from_pdf, validate_tesseract_language,
                         process_pdf_with_ocr, convert_image_to_pdf,
                         make_invisible_text_layer)
 from pdf2ocr.utils import check_dependencies, timing_context
+
+
+def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
+    """Process a single PDF file.
+    
+    Args:
+        filename: Name of the PDF file to process
+        config: Processing configuration
+        
+    Returns:
+        tuple: (success: bool, processing_time: float, error_message: str, log_messages: list)
+    """
+    # Setup logging for this process
+    logger = setup_logging(config.log_path, config.quiet, is_worker=True)
+    log_messages = []
+    
+    try:
+        pdf_path = os.path.join(config.source_dir, filename)
+        base_name = os.path.splitext(filename)[0]
+        
+        with timing_context(f"Processing {filename}", logger) as get_file_time:
+            try:
+                # Process PDF pages with OCR
+                pages = process_pdf_with_ocr(pdf_path, config.lang, config.dpi, logger)
+                page_texts = [text for _, text in pages]
+                
+                # Generate output files based on configuration
+                output_files = []
+                
+                if config.generate_pdf:
+                    pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
+                    with timing_context("PDF generation", logger) as get_pdf_time:
+                        save_as_pdf(page_texts, pdf_path, base_name)
+                        output_files.append(("PDF", get_pdf_time()))
+                
+                if config.generate_html:
+                    html_path = os.path.join(config.html_dir, base_name + ".html")
+                    with timing_context("HTML generation", logger) as get_html_time:
+                        save_as_html(page_texts, html_path)
+                        output_files.append(("HTML", get_html_time()))
+                
+                if config.generate_docx:
+                    docx_path = os.path.join(config.docx_dir, base_name + ".docx")
+                    with timing_context("DOCX generation", logger) as get_docx_time:
+                        save_as_docx(page_texts, docx_path)
+                        output_files.append(("DOCX", get_docx_time()))
+                    
+                    if config.generate_epub:
+                        epub_path = os.path.join(config.epub_dir, base_name + ".epub")
+                        with timing_context("EPUB generation", logger) as get_epub_time:
+                            success, _, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
+                            if success:
+                                output_files.append(("EPUB", get_epub_time()))
+                            else:
+                                raise Exception(f"EPUB conversion failed: {output}")
+                
+                # Generate log messages for all successful outputs
+                log_messages.extend([
+                    ("INFO", f"{format} created in {time:.2f} seconds")
+                    for format, time in output_files
+                ])
+                
+                return True, get_file_time(), None, log_messages
+                
+            except Exception as e:
+                # Add context to the error message
+                error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
+                log_messages.append(("ERROR", error_msg))
+                return False, get_file_time(), error_msg, log_messages
+                
+    except Exception as e:
+        # Handle setup/initialization errors
+        error_msg = f"Failed to initialize processing for {filename}: {str(e)}"
+        log_messages.append(("ERROR", error_msg))
+        return False, 0, error_msg, log_messages
+        
+    finally:
+        # Ensure logger is properly closed
+        if logger and hasattr(logger, 'close'):
+            logger.close()
 
 
 def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
@@ -97,63 +178,172 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
         # Add empty line after folder creation
         log_message(logger, "DEBUG", "", quiet=config.quiet)
         
-        # Process each PDF file
+        # Get list of PDF files
         pdf_files = sorted(f for f in os.listdir(config.source_dir) if f.lower().endswith(".pdf"))
         if not pdf_files:
             log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
             return
         
+        # Process files in parallel
         with timing_context("Total execution", logger) as get_total_time:
-            for idx, filename in enumerate(pdf_files, start=1):
-                log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
+            # Use configured number of workers
+            max_workers = config.workers
+            log_message(logger, "INFO", f"Processing {len(pdf_files)} files using {max_workers} worker{'s' if max_workers > 1 else ''}", quiet=config.quiet)
+            log_message(logger, "INFO", "", quiet=config.quiet)  # Empty line for readability
+            
+            # Track processing statistics
+            completed = 0
+            successful = 0
+            failed = 0
+            errors = []
+            active_files = set()
+            
+            with futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all files for processing
+                future_to_file = {
+                    executor.submit(process_single_pdf, filename, config): filename
+                    for filename in pdf_files
+                }
                 
-                try:
-                    pdf_path = os.path.join(config.source_dir, filename)
-                    base_name = os.path.splitext(filename)[0]
+                # Process results as they complete
+                for future in futures.as_completed(future_to_file):
+                    filename = future_to_file[future]
+                    completed += 1
                     
-                    with timing_context(f"Processing {filename}", logger) as get_file_time:
-                        # Process PDF pages with OCR
-                        pages = process_pdf_with_ocr(pdf_path, config.lang, config.dpi, logger)
-                        page_texts = [text for _, text in pages]
+                    try:
+                        success, processing_time, error, log_messages = future.result()
                         
-                        # Generate output files
-                        if config.generate_pdf:
-                            pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
-                            with timing_context("PDF generation", logger) as get_pdf_time:
-                                save_as_pdf(page_texts, pdf_path, base_name)
-                            log_message(logger, "INFO", f"OCR PDF created in {get_pdf_time():.2f} seconds", quiet=config.quiet)
+                        # Log file start
+                        log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=config.quiet)
                         
-                        if config.generate_html:
-                            html_path = os.path.join(config.html_dir, base_name + ".html")
-                            with timing_context("HTML generation", logger) as get_html_time:
-                                save_as_html(page_texts, html_path)
-                            log_message(logger, "INFO", f"HTML created in {get_html_time():.2f} seconds", quiet=config.quiet)
+                        # Write all log messages from the child process
+                        for level, message in log_messages:
+                            log_message(logger, level, "  " + message, quiet=config.quiet)
                         
-                        if config.generate_docx:
-                            docx_path = os.path.join(config.docx_dir, base_name + ".docx")
-                            with timing_context("DOCX generation", logger) as get_docx_time:
-                                save_as_docx(page_texts, docx_path)
-                            log_message(logger, "INFO", f"DOCX created in {get_docx_time():.2f} seconds", quiet=config.quiet)
-                            
-                            if config.generate_epub:
-                                epub_path = os.path.join(config.epub_dir, base_name + ".epub")
-                                with timing_context("EPUB generation", logger) as get_epub_time:
-                                    success, _, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
-                                    if success:
-                                        log_message(logger, "INFO", f"EPUB created in {get_epub_time():.2f} seconds", quiet=config.quiet)
-                                    else:
-                                        log_message(logger, "ERROR", f"Failed to create EPUB: {output}", quiet=config.quiet)
-                    
-                    log_process_complete(logger, get_file_time(), quiet=config.quiet)
-                    
-                except Exception as e:
-                    log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
-                    continue
-        
-        log_conversion_summary(logger, len(pdf_files), get_total_time(), quiet=config.quiet)
+                        if success:
+                            successful += 1
+                            log_process_complete(logger, processing_time, quiet=config.quiet)
+                            log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
+                        else:
+                            failed += 1
+                            if error:
+                                errors.append((filename, error))
+                                log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=config.quiet)
+                        
+                        # Add empty line for readability
+                        log_message(logger, "INFO", "", quiet=config.quiet)
+                        
+                    except Exception as e:
+                        failed += 1
+                        error_msg = f"Error processing {filename}: {str(e)}"
+                        log_message(logger, "ERROR", error_msg, quiet=config.quiet)
+                        errors.append((filename, error_msg))
+            
+            # Log final summary
+            total_time = get_total_time()
+            summary = [
+                f"\nProcessing Summary:",
+                f"----------------",
+                f"Files processed: {len(pdf_files)}",
+                f"Total time: {total_time:.2f} seconds"
+            ]
+            
+            if len(pdf_files) > 0:
+                avg_time = total_time / len(pdf_files)
+                summary.append(f"Average time per file: {avg_time:.2f} seconds")
+            
+            summary.extend([
+                f"Successful: {successful}",
+                f"Failed: {failed}"
+            ])
+            
+            if errors:
+                summary.extend([
+                    "\nErrors:",
+                    "-------"
+                ])
+                for filename, error in errors:
+                    summary.append(f"• {filename}:")
+                    summary.append(f"  {error}")
+            
+            log_message(logger, "INFO", "\n".join(summary), quiet=config.quiet)
         
     except Exception as e:
         log_message(logger, "ERROR", f"Error processing PDFs: {str(e)}", quiet=config.quiet)
+        raise
+
+
+def process_single_layout_pdf(filename: str, config: ProcessingConfig) -> tuple:
+    """Process a single PDF file in layout-preserving mode.
+    
+    Args:
+        filename: Name of the PDF file to process
+        config: Processing configuration
+        
+    Returns:
+        tuple: (success: bool, processing_time: float, error_message: str, log_messages: list)
+    """
+    # Setup logging for this process
+    logger = setup_logging(config.log_path, config.quiet, is_worker=True)
+    log_messages = []
+    
+    try:
+        pdf_path = os.path.join(config.source_dir, filename)
+        base_name = os.path.splitext(filename)[0]
+        out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
+        
+        with timing_context(f"Processing {filename}", logger) as get_file_time:
+            # Convert PDF to images with lower DPI for layout preservation
+            pages = convert_from_path(pdf_path, dpi=200)
+            
+            # Process each page with OCR
+            pdf_pages = []
+            
+            # Create temporary directory for processing
+            with tempfile.TemporaryDirectory() as temp_dir:
+                with timing_context("OCR processing", logger) as get_ocr_time:
+                    for page_num, page_img in enumerate(tqdm(pages, desc="Processing pages", unit="page")):
+                        # Save image to temporary file
+                        img_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                        page_img.save(img_path, "PNG")
+                        
+                        # Generate PDF with OCR using tesseract
+                        pdf_path = os.path.join(temp_dir, f"page_{page_num}")
+                        cmd = [
+                            "tesseract",
+                            img_path,
+                            pdf_path,
+                            "-l", config.lang,
+                            "--dpi", "200",
+                            "pdf"
+                        ]
+                        subprocess.run(cmd, check=True, capture_output=True)
+                        
+                        # Read generated PDF
+                        with open(f"{pdf_path}.pdf", "rb") as f:
+                            pdf_pages.append(f.read())
+                
+                log_messages.append(("INFO", f"OCR completed in {get_ocr_time():.2f} seconds"))
+                
+                # Merge PDF pages
+                with timing_context("PDF merging", logger) as get_merge_time:
+                    writer = PdfWriter()
+                    
+                    for page_pdf in pdf_pages:
+                        reader = PdfReader(io.BytesIO(page_pdf))
+                        writer.add_page(reader.pages[0])
+                    
+                    with open(out_path, "wb") as fout:
+                        writer.write(fout)
+                
+                log_messages.append(("INFO", f"Layout-preserving PDF created in {get_merge_time():.2f} seconds"))
+            
+            return True, get_file_time(), None, log_messages
+            
+    except Exception as e:
+        error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
+        log_messages.append(("ERROR", error_msg))
+        return False, 0, error_msg, log_messages
 
 
 def process_layout_pdf_only(config: ProcessingConfig, logger: logging.Logger):
@@ -176,78 +366,100 @@ def process_layout_pdf_only(config: ProcessingConfig, logger: logging.Logger):
         # Create output directory
         os.makedirs(config.pdf_dir, exist_ok=True)
         log_message(logger, "DEBUG", f"Preserve-layout PDF folder created - {config.pdf_dir}", quiet=config.quiet)
+        log_message(logger, "DEBUG", "", quiet=config.quiet)  # Add empty line after directory creation
         
-        # Process each PDF file
+        # Get list of PDF files
         pdf_files = sorted(f for f in os.listdir(config.source_dir) if f.lower().endswith(".pdf"))
         if not pdf_files:
             log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
             return
         
+        # Process files in parallel
         with timing_context("Total execution", logger) as get_total_time:
-            for idx, filename in enumerate(pdf_files, start=1):
-                log_process_start(logger, filename, idx, len(pdf_files), quiet=config.quiet)
+            # Use configured number of workers
+            max_workers = config.workers
+            log_message(logger, "INFO", f"Processing {len(pdf_files)} files using {max_workers} worker{'s' if max_workers > 1 else ''}", quiet=config.quiet)
+            log_message(logger, "INFO", "", quiet=config.quiet)  # Empty line for readability
+            
+            # Track processing statistics
+            completed = 0
+            successful = 0
+            failed = 0
+            errors = []
+            
+            with futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all files for processing
+                future_to_file = {
+                    executor.submit(process_single_layout_pdf, filename, config): filename
+                    for filename in pdf_files
+                }
                 
-                try:
-                    pdf_path = os.path.join(config.source_dir, filename)
-                    base_name = os.path.splitext(filename)[0]
-                    out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
+                # Process results as they complete
+                for future in futures.as_completed(future_to_file):
+                    filename = future_to_file[future]
+                    completed += 1
                     
-                    with timing_context(f"Processing {filename}", logger) as get_file_time:
-                        # Convert PDF to images with lower DPI for layout preservation
-                        pages = convert_from_path(pdf_path, dpi=200)
+                    try:
+                        success, processing_time, error, log_messages = future.result()
                         
-                        # Process each page with OCR
-                        pdf_pages = []
+                        # Log file start
+                        log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=config.quiet)
                         
-                        # Create temporary directory for processing
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            with timing_context("OCR processing", logger) as get_ocr_time:
-                                for page_num, page_img in enumerate(tqdm(pages, desc="Processing pages", unit="page")):
-                                    # Save image to temporary file
-                                    img_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                                    page_img.save(img_path, "PNG")
-                                    
-                                    # Generate PDF with OCR using tesseract
-                                    pdf_path = os.path.join(temp_dir, f"page_{page_num}")
-                                    cmd = [
-                                        "tesseract",
-                                        img_path,
-                                        pdf_path,
-                                        "-l", config.lang,
-                                        "--dpi", "200",
-                                        "pdf"
-                                    ]
-                                    subprocess.run(cmd, check=True, capture_output=True)
-                                    
-                                    # Read generated PDF
-                                    with open(f"{pdf_path}.pdf", "rb") as f:
-                                        pdf_pages.append(f.read())
-                            
-                            log_message(logger, "INFO", f"OCR completed in {get_ocr_time():.2f} seconds", quiet=config.quiet)
-                            
-                            # Merge PDF pages
-                            with timing_context("PDF merging", logger) as get_merge_time:
-                                writer = PdfWriter()
-                                
-                                for page_pdf in pdf_pages:
-                                    reader = PdfReader(io.BytesIO(page_pdf))
-                                    writer.add_page(reader.pages[0])
-                                
-                                with open(out_path, "wb") as fout:
-                                    writer.write(fout)
-                            
-                            log_message(logger, "INFO", f"Layout-preserving PDF created in {get_merge_time():.2f} seconds", quiet=config.quiet)
-                    
-                    log_process_complete(logger, get_file_time(), quiet=config.quiet)
-                    
-                except Exception as e:
-                    log_message(logger, "ERROR", f"Error processing {filename}: {str(e)}", quiet=config.quiet)
-                    continue
-        
-        log_conversion_summary(logger, len(pdf_files), get_total_time(), quiet=config.quiet)
+                        # Write all log messages from the child process
+                        for level, message in log_messages:
+                            log_message(logger, level, "  " + message, quiet=config.quiet)
+                        
+                        if success:
+                            successful += 1
+                            log_process_complete(logger, processing_time, quiet=config.quiet)
+                            log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
+                        else:
+                            failed += 1
+                            if error:
+                                errors.append((filename, error))
+                                log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=config.quiet)
+                        
+                        # Add empty line for readability
+                        log_message(logger, "INFO", "", quiet=config.quiet)
+                        
+                    except Exception as e:
+                        failed += 1
+                        error_msg = f"Error processing {filename}: {str(e)}"
+                        log_message(logger, "ERROR", error_msg, quiet=config.quiet)
+                        errors.append((filename, error_msg))
+            
+            # Log final summary
+            total_time = get_total_time()
+            summary = [
+                f"\nProcessing Summary:",
+                f"----------------",
+                f"Files processed: {len(pdf_files)}",
+                f"Total time: {total_time:.2f} seconds"
+            ]
+            
+            if len(pdf_files) > 0:
+                avg_time = total_time / len(pdf_files)
+                summary.append(f"Average time per file: {avg_time:.2f} seconds")
+            
+            summary.extend([
+                f"Successful: {successful}",
+                f"Failed: {failed}"
+            ])
+            
+            if errors:
+                summary.extend([
+                    "\nErrors:",
+                    "-------"
+                ])
+                for filename, error in errors:
+                    summary.append(f"• {filename}:")
+                    summary.append(f"  {error}")
+            
+            log_message(logger, "INFO", "\n".join(summary), quiet=config.quiet)
         
     except Exception as e:
         log_message(logger, "ERROR", f"Error processing layout PDF: {str(e)}", quiet=config.quiet)
+        raise
 
 
 def parse_arguments():
@@ -288,6 +500,12 @@ def parse_arguments():
         default=400,
         help="DPI for image conversion (default: 400)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=2,
+        help="Number of parallel workers for processing (default: 2)",
+    )
     parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
     parser.add_argument(
         "--short-output",
@@ -319,7 +537,8 @@ def main():
             preserve_layout=args.preserve_layout,
             quiet=args.quiet,
             summary_output=args.summary_output,
-            log_path=args.logfile
+            log_path=args.logfile,
+            workers=args.workers
         )
         
         # Setup logging
