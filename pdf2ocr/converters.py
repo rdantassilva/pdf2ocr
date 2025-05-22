@@ -177,11 +177,13 @@ def save_as_pdf(text_pages, output_path):
                 
                 c.drawString(x, y, line)
                 y -= line_height
+                page_has_content = True
             
             # Extra space between paragraphs
             y -= line_height
 
-        c.showPage()
+        if page_has_content:
+            c.showPage()
 
     c.save()
     return time.perf_counter() - start
@@ -351,7 +353,9 @@ def convert_docx_to_epub(docx_path, epub_path, lang):
         return True, time.perf_counter() - start, output
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"EPUB conversion failed: {e.stdout}"  # Use stdout since we merged stderr
+        error_msg = f"EPUB conversion failed: {e.stdout}"
+        if e.stderr:
+            error_msg += f"\nError details: {e.stderr}"
         if "ebook-convert: command not found" in str(e):
             error_msg = "Calibre (ebook-convert) not found. Please install Calibre and ensure it's in your PATH."
         return False, time.perf_counter() - start, error_msg
