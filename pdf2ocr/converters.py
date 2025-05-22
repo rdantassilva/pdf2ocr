@@ -12,10 +12,10 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
 
-def remove_accents(texto):
+def remove_accents(text):
     """Remove accents from text while preserving base characters."""
     return (
-        unicodedata.normalize("NFKD", texto).encode("ASCII", "ignore").decode("ASCII")
+        unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
     )
 
 
