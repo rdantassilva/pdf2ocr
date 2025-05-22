@@ -11,6 +11,33 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
 
+def _process_paragraphs(text):
+    """Process and clean paragraphs from text input.
+
+    Args:
+        text (Union[str, List[str]]): Input text, can be a single string or list of strings
+
+    Returns:
+        List[str]: List of cleaned paragraphs
+    """
+    # If input is a list, join with double newlines
+    if isinstance(text, list):
+        text = "\n\n".join(text)
+
+    # Split into paragraphs and process each one
+    paragraphs = []
+    for para in text.strip().split("\n\n"):
+        if not para.strip():
+            continue
+        # Join lines with spaces and clean extra whitespace
+        lines = [line.strip() for line in para.split("\n")]
+        clean_text = " ".join(line for line in lines if line)
+        if clean_text:
+            paragraphs.append(clean_text)
+    
+    return paragraphs
+
+
 def save_as_docx(text: List[str], output_path: str) -> float:
     """Saves extracted text to a DOCX file.
 
@@ -27,27 +54,13 @@ def save_as_docx(text: List[str], output_path: str) -> float:
     document.core_properties.title = title
     document.core_properties.author = "pdf2ocr"
 
-    # Handle both single text and list of texts
+    # Add title as heading for multi-page documents
     if isinstance(text, list):
-        # Add title as heading for multi-page documents
         document.add_heading(title, level=1)
 
-        # Join all pages with double newlines and process as a single text
-        full_text = "\n\n".join(text)
-
-        # Process paragraphs
-        paragraphs = full_text.strip().split("\n\n")
-        for para in paragraphs:
-            clean_para = para.strip().replace("\n", " ")
-            if clean_para:
-                document.add_paragraph(clean_para)
-    else:
-        # Process single text string
-        paragraphs = text.strip().split("\n\n")
-        for para in paragraphs:
-            clean_para = para.strip().replace("\n", " ")
-            if clean_para:
-                document.add_paragraph(clean_para)
+    # Process and add paragraphs
+    for para in _process_paragraphs(text):
+        document.add_paragraph(para)
 
     document.save(output_path)
     return time.perf_counter() - start
@@ -77,7 +90,6 @@ def save_as_pdf(text_pages, output_path):
     Args:
         text_pages (list): List of text content for each page
         output_path (str): Path where to save the PDF file
-        filename (str): Original filename for header information
 
     Returns:
         float: Time taken to save the file in seconds
@@ -121,15 +133,23 @@ def save_as_pdf(text_pages, output_path):
         c.setFont("Helvetica", 10)
         line_height = 12
 
-        # Preserve paragraphs
-        paragraphs = page_text.strip().split("\n\n")
-        for para in paragraphs:
-            lines = para.strip().split("\n")
-            for line in lines:
-                line = line.strip()
-                if line:
-                    c.drawString(x, y, line)
-                    y -= line_height
+        # Process paragraphs
+        for para in _process_paragraphs(page_text):
+            # Split long paragraphs into lines that fit the page width
+            words = para.split()
+            current_line = []
+            
+            for word in words:
+                current_line.append(word)
+                line = " ".join(current_line)
+                
+                # Check if line width exceeds page width
+                if c.stringWidth(line, "Helvetica", 10) > (width - 4 * cm):
+                    # Remove last word and draw current line
+                    current_line.pop()
+                    line = " ".join(current_line)
+                    
+                    # Draw line and check page break
                     if y < 2 * cm:  # Check page end
                         c.showPage()
                         y = height - 3 * cm
@@ -137,7 +157,29 @@ def save_as_pdf(text_pages, output_path):
                         c.setFont("Helvetica", 10)
                         c.drawString(x, height - 1 * cm, header)
                         c.setFont("Helvetica", 10)
-            y -= line_height  # Extra space between paragraphs
+                    
+                    c.drawString(x, y, line)
+                    y -= line_height
+                    
+                    # Start new line with the word that didn't fit
+                    current_line = [word]
+            
+            # Draw remaining words in the last line
+            if current_line:
+                line = " ".join(current_line)
+                if y < 2 * cm:  # Check page end
+                    c.showPage()
+                    y = height - 3 * cm
+                    # Repeat header on new page
+                    c.setFont("Helvetica", 10)
+                    c.drawString(x, height - 1 * cm, header)
+                    c.setFont("Helvetica", 10)
+                
+                c.drawString(x, y, line)
+                y -= line_height
+            
+            # Extra space between paragraphs
+            y -= line_height
 
         c.showPage()
 
@@ -175,9 +217,9 @@ def save_as_html(text, output_path):
 </head>
 <body>"""
 
-        # Handle both single text and list of texts
+        # Handle multi-page documents
         if isinstance(text, list):
-            # Add title for multi-page documents
+            # Add title
             html_content += f"\n<h1>{title}</h1>\n"
 
             # Skip empty pages at the start
@@ -193,28 +235,14 @@ def save_as_html(text, output_path):
                 html_content += f'<div class="page-number">Page {page_num}</div>\n'
 
                 # Process paragraphs in this page
-                paragraphs = page_text.split("\n\n")
-                for para in paragraphs:
-                    if not para.strip():
-                        continue
-
-                    # Join lines with spaces for better readability
-                    lines = [line.strip() for line in para.split("\n")]
-                    clean_text = " ".join(line for line in lines if line)
-                    html_content += f"<p>{clean_text}</p>\n"
+                for para in _process_paragraphs(page_text):
+                    html_content += f"<p>{para}</p>\n"
 
                 html_content += "</div>\n"
         else:
             # Process single text string
-            paragraphs = text.split("\n\n")
-            for para in paragraphs:
-                if not para.strip():
-                    continue
-
-                # Join lines with spaces for better readability
-                lines = [line.strip() for line in para.split("\n")]
-                clean_text = " ".join(line for line in lines if line)
-                html_content += f"<p>{clean_text}</p>\n"
+            for para in _process_paragraphs(text):
+                html_content += f"<p>{para}</p>\n"
 
         # Close HTML
         html_content += "</body>\n</html>"
