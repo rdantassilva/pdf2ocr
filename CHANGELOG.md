@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 ### ✨ Added
 - `--workers` option for parallel PDF processing with configurable number of worker processes.
 - Centralized logging system with consistent output formatting across all operations.
+- Enhanced PDF compression in layout-preserving mode using Ghostscript post-OCR compression.
 
 ### 🛠 Changed
 - Refactored paragraph processing in `converters.py` to use a shared helper function `_process_paragraphs`.
@@ -18,12 +19,14 @@ All notable changes to this project will be documented in this file.
 - Unified logging approach with better control over quiet and summary modes.
 - Improved progress reporting for parallel processing.
 - Renamed `logger` parameter to `log_file` in logging functions for better clarity.
+- Optimized layout-preserving mode to maintain OCR quality while reducing final file size.
 
 ### 🐛 Fixed
 - Removed redundant subprocess arguments in EPUB conversion.
 - Fixed subprocess.run() call in convert_docx_to_epub by removing conflicting stderr argument.
 - Improved error handling in EPUB conversion with clearer error messages.
 - Fixed race conditions in parallel processing logging.
+- Fixed PDF compression in layout-preserving mode to use only supported methods.
 
 ## [v1.0.12] - 2025-05-08
 
