@@ -160,17 +160,17 @@ def save_as_html(text, output_path):
         title = os.path.splitext(os.path.basename(output_path))[0].replace("_", " ")
 
         # Start HTML content
-        html_content = """<!DOCTYPE html>
+        html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{title}</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }
-        h1 { color: #333; }
-        .page { margin-bottom: 30px; }
-        .page-number { color: #666; font-style: italic; margin-bottom: 10px; }
-        p { margin-bottom: 15px; }
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }}
+        h1 {{ color: #333; }}
+        .page {{ margin-bottom: 30px; }}
+        .page-number {{ color: #666; font-style: italic; margin-bottom: 10px; }}
+        p {{ margin-bottom: 15px; }}
     </style>
 </head>
 <body>"""

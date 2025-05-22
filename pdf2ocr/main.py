@@ -130,7 +130,7 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
                 if config.generate_pdf:
                     pdf_path = os.path.join(config.pdf_dir, base_name + "_ocr.pdf")
                     with timing_context("PDF generation", None) as get_pdf_time:
-                        save_as_pdf(page_texts, pdf_path, base_name)
+                        save_as_pdf(page_texts, pdf_path)
                         output_files.append(("PDF", get_pdf_time()))
 
                 if config.generate_html:
