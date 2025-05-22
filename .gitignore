@@ -23,6 +23,7 @@ saida/
 *.pdf
 *.docx
 *.epub
+*.html
 
 # IDE files
 .vscode/
