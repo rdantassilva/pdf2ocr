@@ -6,6 +6,7 @@ import sys
 import time
 import tempfile
 import os
+import logging
 from typing import Optional, List, Tuple, Any, TextIO
 
 from PIL import ImageFilter, ImageOps, Image
@@ -173,43 +174,61 @@ ET""".strip().encode('utf-8')
     return form
 
 
-def process_pdf_with_ocr(pdf_path: str, lang: str, logger: Optional[TextIO] = None) -> List[Tuple[Image.Image, str]]:
-    """Process a PDF file with OCR.
+def extract_text_from_image(image: Image.Image, lang: str) -> str:
+    """Extract text from an image using OCR.
     
     Args:
-        pdf_path: Path to the PDF file
+        image: PIL Image to process
         lang: Language code for OCR
-        logger: Optional logger for messages
         
     Returns:
-        List[Tuple[Image.Image, str]]: List of (image, text) tuples for each page
+        str: Extracted text
     """
-    # Convert PDF to images
+    # Preprocess image for better OCR results
+    image = preprocess_image(image)
+    
+    # Extract text using tesseract
+    text = image_to_string(image, lang=lang)
+    
+    # Clean text if Portuguese
+    if lang.lower() == "por":
+        text = clean_text_portuguese(text)
+        
+    return text
+
+
+def process_pdf_with_ocr(pdf_path: str, lang: str, logger: logging.Logger, quiet: bool = False, summary: bool = False) -> list:
+    """Process PDF file with OCR.
+    
+    Args:
+        pdf_path: Path to PDF file
+        lang: OCR language code
+        logger: Logger instance
+        quiet: Whether to suppress progress output
+        summary: Whether to show only summary output
+        
+    Returns:
+        list: List of tuples (page_number, text)
+    """
+    pages = []
+    
     try:
-        images = convert_from_path(pdf_path, dpi=400)  # Fixed at 400 DPI for OCR
+        # Convert PDF to images
+        images = convert_from_path(pdf_path, dpi=400)
+        
+        # Process each page with OCR
+        for i, image in enumerate(tqdm(images, 
+                                     desc="Processing pages", 
+                                     unit="page",
+                                     disable=quiet or summary)):  # Disable progress bar if quiet or summary mode
+            text = extract_text_from_image(image, lang)
+            pages.append((i + 1, text))
+            
     except Exception as e:
-        if logger:
-            log_message(logger, "ERROR", f"Error converting PDF: {str(e)}", quiet=True)
+        log_message(logger, "ERROR", f"Error processing PDF: {str(e)}", quiet=False)  # Always show errors
         raise
-    
-    # Process each page
-    results = []
-    for page_num, image in enumerate(tqdm(images, desc="Processing pages", unit="page")):
-        try:
-            # Preprocess image
-            image = ImageOps.autocontrast(image)
-            image = image.filter(ImageFilter.SHARPEN)
-            
-            # Extract text
-            text = image_to_string(image, lang=lang)
-            results.append((image, text))
-            
-        except Exception as e:
-            if logger:
-                log_message(logger, "ERROR", f"Error processing page {page_num + 1}: {str(e)}", quiet=True)
-            continue
-    
-    return results
+        
+    return pages
 
 
 def extract_text_from_pdf(pdf_source_path, tesseract_config, lang, quiet=False):

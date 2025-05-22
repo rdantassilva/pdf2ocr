@@ -79,19 +79,19 @@ class ProcessingConfig:
 
         # Enable DOCX automatically if EPUB is requested
         if self.generate_epub and not self.generate_docx:
-            log_message(None, "WARNING", "EPUB generation requires DOCX format. Enabling DOCX generation automatically.", quiet=self.quiet)
+            log_message(None, "WARNING", "EPUB generation requires DOCX format. Enabling DOCX generation automatically.", quiet=self.quiet or self.summary_output)
             self.generate_docx = True
 
         # Warn about preserve-layout limitations and disable other formats
         if self.preserve_layout:
             if any([self.generate_docx, self.generate_epub, self.generate_html]):
-                log_message(None, "WARNING", "Layout preservation mode only supports PDF output. Other formats will be disabled.", quiet=self.quiet)
+                log_message(None, "WARNING", "Layout preservation mode only supports PDF output. Other formats will be disabled.", quiet=self.quiet or self.summary_output)
                 self.generate_docx = False
                 self.generate_epub = False
                 self.generate_html = False
             if not self.generate_pdf:
                 self.generate_pdf = True
-                log_message(None, "INFO", "PDF output automatically enabled for layout preservation mode.", quiet=self.quiet)
+                log_message(None, "INFO", "PDF output automatically enabled for layout preservation mode.", quiet=self.quiet or self.summary_output)
 
         # Skip directory validation in test environment
         if not self.source_dir.startswith("/test/") and not os.path.isdir(self.source_dir):

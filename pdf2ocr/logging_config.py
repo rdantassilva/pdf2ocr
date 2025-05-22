@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from typing import Optional, TextIO
 
+# Global variable to track the last message
+_last_message = ""
 
 def setup_logging(log_path: Optional[str] = None, quiet: bool = False, is_worker: bool = False) -> TextIO:
     """Set up logging to file with line buffering.
@@ -35,62 +37,62 @@ def setup_logging(log_path: Optional[str] = None, quiet: bool = False, is_worker
     return log_file
 
 
-def log_message(logger, level, message, quiet=False):
-    """Log a message to both file and console.
+def log_message(logger, level: str, message: str, quiet: bool = False) -> None:
+    """Log a message to both console and file if logger is provided.
     
     Args:
-        logger: Logger object or None for console-only output
-        level: Message level (DEBUG, INFO, WARNING, ERROR)
-        message: Message text
+        logger: TextIOWrapper instance or None
+        level: Log level (INFO, ERROR, etc)
+        message: Message to log
         quiet: Whether to suppress console output
     """
+    global _last_message
+    
+    # Skip empty messages if the previous message was also empty
+    if message == "" and _last_message == "":
+        return
+    
+    # Always log to file if logger is provided
     if logger:
         # Add timestamp and level for file logging
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        log_message = f"{timestamp} - {level} - {message}\n"
+        log_line = f"{timestamp} - {level} - {message}\n"
         
         # Add extra newlines for warnings and special messages
         if level == "WARNING":
-            log_message = "\n" + log_message + "\n"
+            # Only add newline before if previous message wasn't empty
+            if _last_message != "":
+                log_line = "\n" + log_line
+            log_line = log_line + "\n"
         elif "Using Tesseract language model:" in message:
-            log_message = "\n" + log_message + "\n"
+            log_line = "\n" + log_line + "\n"
         elif "Processing file" in message:
-            log_message = "\n" + log_message
+            log_line = "\n" + log_line
         elif "Total time for file:" in message:
-            log_message += "\n"
+            log_line += "\n"
         
-        logger.write(log_message)
-        
+        logger.write(log_line)
+        logger.flush()  # Ensure message is written immediately
+    
+    # Only print to console if not quiet
     if not quiet:
-        # Format message based on level and terminal support
-        if sys.stdout.isatty():  # Terminal supports colors
-            if level == "DEBUG":
-                message = f"\033[36m{message}\033[0m"  # Cyan
-            elif level == "INFO":
-                pass  # No color for INFO
-            elif level == "WARNING":
-                # Add WARNING: prefix and color
-                message = f"\033[33m\nWARNING: {message}\n\033[0m"  # Yellow
-            elif level == "ERROR":
-                message = f"\033[31m{message}\033[0m"  # Red
-            elif level == "HEADER":
-                message = f"\033[1;34m{message}\033[0m"  # Bold Blue
+        if level == "ERROR":
+            print(f"\033[91m{message}\033[0m", file=sys.stderr)  # Red text
+        elif level == "WARNING":
+            # Only print newline before if previous message wasn't empty
+            if _last_message != "":
+                print()
+            print(f"\033[93m{message}\033[0m", file=sys.stderr)  # Yellow text
+            print()  # Always print newline after
+        elif level == "DEBUG":
+            print(f"\033[90m{message}\033[0m")  # Gray text
+        elif level == "HEADER":
+            print(f"\033[1m{message}\033[0m")  # Bold text
         else:
-            # Add WARNING: prefix for non-color terminals
-            if level == "WARNING":
-                message = f"\nWARNING: {message}\n"
-        
-        # Add extra newlines for special messages
-        if "Using Tesseract language model:" in message:
-            message = "\n" + message
-        elif "Processing file" in message:
-            message = "\n" + message
-        elif "Total time for file:" in message:
-            message += "\n"
-        elif "Conversion Summary" in message:
-            message = "\n" + message
-        
-        print(message)
+            print(message)
+    
+    # Store the last message to help control spacing
+    _last_message = message
 
 
 def close_logging(log_file: Optional[TextIO]) -> None:

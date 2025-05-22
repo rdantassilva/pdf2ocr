@@ -110,7 +110,7 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
         with timing_context(f"Processing {filename}", logger) as get_file_time:
             try:
                 # Process PDF pages with OCR
-                pages = process_pdf_with_ocr(pdf_path, config.lang, logger)
+                pages = process_pdf_with_ocr(pdf_path, config.lang, logger, config.quiet, config.summary_output)
                 page_texts = [text for _, text in pages]
                 
                 # Generate output files based on configuration
@@ -138,6 +138,10 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
                         epub_path = os.path.join(config.epub_dir, base_name + ".epub")
                         with timing_context("EPUB generation", logger) as get_epub_time:
                             success, _, output = convert_docx_to_epub(docx_path, epub_path, config.lang)
+                            # Log ebook-convert output only to file (force quiet=True)
+                            if output and logger:
+                                log_message(logger, "INFO", f"ebook-convert output for {filename}:", quiet=True)
+                                log_message(logger, "INFO", output, quiet=True)
                             if success:
                                 output_files.append(("EPUB", get_epub_time()))
                             else:
@@ -156,7 +160,7 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
                 error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
                 log_messages.append(("ERROR", error_msg))
                 return False, get_file_time(), error_msg, log_messages
-                
+
     except Exception as e:
         # Handle setup/initialization errors
         error_msg = f"Failed to initialize processing for {filename}: {str(e)}"
@@ -174,6 +178,14 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
     
     global shutdown_requested
     
+    # Helper function to determine if we should show a message in console
+    def should_show_message():
+        if config.quiet:  # In quiet mode, show nothing
+            return False
+        if config.summary_output:  # In summary mode, show nothing except summary
+            return False
+        return True  # In normal mode, show everything
+    
     # Validate configuration
     config.validate()
     
@@ -182,32 +194,32 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
         os.makedirs(config.get_effective_dest_dir(), exist_ok=True)
         if config.generate_docx:
             os.makedirs(config.docx_dir, exist_ok=True)
-            log_message(logger, "DEBUG", f"DOCX folder created - {config.docx_dir}", quiet=config.quiet)
+            log_message(logger, "DEBUG", f"DOCX folder created - {config.docx_dir}", quiet=not should_show_message())
         if config.generate_pdf:
             os.makedirs(config.pdf_dir, exist_ok=True)
-            log_message(logger, "DEBUG", f"PDF folder created - {config.pdf_dir}", quiet=config.quiet)
+            log_message(logger, "DEBUG", f"PDF folder created - {config.pdf_dir}", quiet=not should_show_message())
         if config.generate_epub:
             os.makedirs(config.epub_dir, exist_ok=True)
-            log_message(logger, "DEBUG", f"EPUB folder created - {config.epub_dir}", quiet=config.quiet)
+            log_message(logger, "DEBUG", f"EPUB folder created - {config.epub_dir}", quiet=not should_show_message())
         if config.generate_html:
             os.makedirs(config.html_dir, exist_ok=True)
-            log_message(logger, "DEBUG", f"HTML folder created - {config.html_dir}", quiet=config.quiet)
+            log_message(logger, "DEBUG", f"HTML folder created - {config.html_dir}", quiet=not should_show_message())
             
         # Add empty line after folder creation
-        log_message(logger, "DEBUG", "", quiet=config.quiet)
+        log_message(logger, "DEBUG", "", quiet=not should_show_message())
         
         # Get list of PDF files
         pdf_files = sorted(f for f in os.listdir(config.source_dir) if f.lower().endswith(".pdf"))
         if not pdf_files:
-            log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
+            log_message(logger, "WARNING", "No PDF files found!", quiet=False)  # Always show warnings
             return
         
         # Process files in parallel
         with timing_context("Total execution", logger) as get_total_time:
             # Use configured number of workers
             max_workers = config.workers
-            log_message(logger, "INFO", f"Processing {len(pdf_files)} files using {max_workers} worker{'s' if max_workers > 1 else ''}", quiet=config.quiet)
-            log_message(logger, "INFO", "", quiet=config.quiet)  # Empty line for readability
+            log_message(logger, "INFO", f"Processing {len(pdf_files)} files using {max_workers} worker{'s' if max_workers > 1 else ''}", quiet=not should_show_message())
+            log_message(logger, "INFO", "", quiet=not should_show_message())  # Empty line for readability
             
             # Track processing statistics
             completed = 0
@@ -236,39 +248,39 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
                         try:
                             success, processing_time, error, log_messages = future.result()
                             
-                            # Log file start
-                            log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=config.quiet)
+                            # Log file start and messages
+                            log_message(logger, "INFO", f"\n[{completed}/{len(pdf_files)}] Processing: {filename}", quiet=not should_show_message())
                             
                             # Write all log messages from the child process
                             for level, message in log_messages:
-                                log_message(logger, level, "  " + message, quiet=config.quiet)
+                                log_message(logger, level, "  " + message, quiet=not should_show_message())
                             
                             if success:
                                 successful += 1
-                                log_process_complete(logger, processing_time, quiet=config.quiet)
-                                log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=config.quiet)
+                                log_process_complete(logger, processing_time, quiet=not should_show_message())
+                                log_message(logger, "INFO", f"  ✓ Completed successfully in {processing_time:.2f} seconds", quiet=not should_show_message())
                             else:
                                 failed += 1
                                 if error:
                                     errors.append((filename, error))
-                                    log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=config.quiet)
+                                    log_message(logger, "ERROR", f"  ✗ Failed: {error}", quiet=False)  # Always show errors
                             
                             # Add empty line for readability
-                            log_message(logger, "INFO", "", quiet=config.quiet)
+                            log_message(logger, "INFO", "", quiet=not should_show_message())
                             
                         except Exception as e:
                             failed += 1
                             error_msg = f"Error processing {filename}: {str(e)}"
-                            log_message(logger, "ERROR", error_msg, quiet=config.quiet)
+                            log_message(logger, "ERROR", error_msg, quiet=False)  # Always show errors
                             errors.append((filename, error_msg))
                             
                 except KeyboardInterrupt:
                     executor.shutdown(wait=False)
-                    log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=config.quiet)
+                    log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=False)  # Always show interruption
                     return
             
             if shutdown_requested:
-                log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=config.quiet)
+                log_message(logger, "WARNING", "\nProcessing interrupted by user.", quiet=False)  # Always show interruption
                 return
                 
             # Log final summary
@@ -298,10 +310,15 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger: logging.Logger):
                     summary.append(f"• {filename}:")
                     summary.append(f"  {error}")
             
-            log_message(logger, "INFO", "\n".join(summary), quiet=config.quiet)
+            # Show summary based on mode:
+            # - In quiet mode: don't show
+            # - In summary mode: show
+            # - In normal mode: show
+            show_summary = not config.quiet
+            log_message(logger, "INFO", "\n".join(summary), quiet=not show_summary)
         
     except Exception as e:
-        log_message(logger, "ERROR", f"Error processing PDFs: {str(e)}", quiet=config.quiet)
+        log_message(logger, "ERROR", f"Error processing PDFs: {str(e)}", quiet=False)  # Always show errors
         raise
 
 
@@ -405,7 +422,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger: logging.Logger):
         if not pdf_files:
             log_message(logger, "WARNING", "No PDF files found!", quiet=config.quiet)
             return
-        
+
         # Process files in parallel
         with timing_context("Total execution", logger) as get_total_time:
             # Use configured number of workers
@@ -576,11 +593,15 @@ def main():
         logger = setup_logging(config.log_path, config.quiet)
         
         try:
+            # Show version info and validate language only in normal mode (not quiet, not summary)
+            show_header = not (config.quiet or config.summary_output)
+            
             # Show version info first
-            log_message(logger, "HEADER", f"PDF2OCR v{__version__}", quiet=config.quiet)
+            log_message(logger, "HEADER", f"PDF2OCR v{__version__}", quiet=not show_header)
+            log_message(logger, "INFO", "", quiet=not show_header)  # Add empty line after version
             
             # Validate Tesseract language
-            validate_tesseract_language(args.lang, logger, args.quiet)
+            validate_tesseract_language(args.lang, logger, not show_header)
             
             # Process PDFs
             if config.preserve_layout:
