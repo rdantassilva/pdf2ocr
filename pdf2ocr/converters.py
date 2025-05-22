@@ -3,7 +3,7 @@
 import os
 import subprocess
 import time
-from typing import Union, List
+from typing import List
 
 from docx import Document
 from reportlab.lib.pagesizes import A4
@@ -11,13 +11,13 @@ from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
 
 
-def save_as_docx(text, output_path):
+def save_as_docx(text: List[str], output_path: str) -> float:
     """Saves extracted text to a DOCX file.
-    
+
     Args:
-        text (Union[str, List[str]]): The text content to save. Can be a single string or a list of page texts.
-        output_path (str): Path where to save the DOCX file
-        
+        text: The text content to save. Can be a single string or a list of page texts.
+        output_path: Path where to save the DOCX file
+
     Returns:
         float: Time taken to save the file in seconds
     """
@@ -31,10 +31,10 @@ def save_as_docx(text, output_path):
     if isinstance(text, list):
         # Add title as heading for multi-page documents
         document.add_heading(title, level=1)
-        
+
         # Join all pages with double newlines and process as a single text
         full_text = "\n\n".join(text)
-        
+
         # Process paragraphs
         paragraphs = full_text.strip().split("\n\n")
         for para in paragraphs:
@@ -87,10 +87,10 @@ def save_as_pdf(text_pages, output_path, filename):
         Choose this method when you want a clean, reformatted version of the document.
     """
     start = time.perf_counter()
-    
+
     # Get title from filename
     title = os.path.splitext(os.path.basename(output_path))[0].replace("_", " ")
-    
+
     # Create PDF with metadata
     c = canvas.Canvas(output_path, pagesize=A4)
     c.setTitle(title)
@@ -98,7 +98,7 @@ def save_as_pdf(text_pages, output_path, filename):
     c.setCreator("pdf2ocr")
     c.setSubject("OCR processed document")
     c.setKeywords("OCR, PDF, text recognition")
-    
+
     width, height = A4
 
     # Skip empty pages at the start
@@ -147,30 +147,30 @@ def save_as_pdf(text_pages, output_path, filename):
 
 def save_as_html(text, output_path):
     """Saves extracted text to an HTML file.
-    
+
     Args:
         text (Union[str, List[str]]): The text content to save. Can be a single string or a list of page texts.
         output_path (str): Path where to save the HTML file
-        
+
     Returns:
         float: Time taken to save the file in seconds
     """
     start = time.perf_counter()
     try:
         title = os.path.splitext(os.path.basename(output_path))[0].replace("_", " ")
-        
+
         # Start HTML content
-        html_content = f"""<!DOCTYPE html>
+        html_content = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>{title}</title>
     <style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }}
-        h1 {{ color: #333; }}
-        .page {{ margin-bottom: 30px; }}
-        .page-number {{ color: #666; font-style: italic; margin-bottom: 10px; }}
-        p {{ margin-bottom: 15px; }}
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 40px; }
+        h1 { color: #333; }
+        .page { margin-bottom: 30px; }
+        .page-number { color: #666; font-style: italic; margin-bottom: 10px; }
+        p { margin-bottom: 15px; }
     </style>
 </head>
 <body>"""
@@ -179,30 +179,30 @@ def save_as_html(text, output_path):
         if isinstance(text, list):
             # Add title for multi-page documents
             html_content += f"\n<h1>{title}</h1>\n"
-            
+
             # Skip empty pages at the start
             page_offset = 0
             for idx, page_text in enumerate(text):
                 if page_text.strip():
                     break
                 page_offset += 1
-            
+
             # Process each page
             for page_num, page_text in enumerate(text[page_offset:], start=1):
-                html_content += f'\n<div class="page">\n'
+                html_content += '\n<div class="page">\n'
                 html_content += f'<div class="page-number">Page {page_num}</div>\n'
-                
+
                 # Process paragraphs in this page
                 paragraphs = page_text.split("\n\n")
                 for para in paragraphs:
                     if not para.strip():
                         continue
-                    
+
                     # Join lines with spaces for better readability
                     lines = [line.strip() for line in para.split("\n")]
                     clean_text = " ".join(line for line in lines if line)
                     html_content += f"<p>{clean_text}</p>\n"
-                
+
                 html_content += "</div>\n"
         else:
             # Process single text string
@@ -210,7 +210,7 @@ def save_as_html(text, output_path):
             for para in paragraphs:
                 if not para.strip():
                     continue
-                
+
                 # Join lines with spaces for better readability
                 lines = [line.strip() for line in para.split("\n")]
                 clean_text = " ".join(line for line in lines if line)
@@ -230,12 +230,12 @@ def save_as_html(text, output_path):
 
 def convert_docx_to_epub(docx_path, epub_path, lang):
     """Converts DOCX to EPUB using Calibre.
-    
+
     Args:
         docx_path (str): Path to source DOCX file
         epub_path (str): Path where to save the EPUB file
         lang (str): Language code for the document
-        
+
     Returns:
         tuple: (success: bool, time_taken: float, output: str)
     """
@@ -247,19 +247,19 @@ def convert_docx_to_epub(docx_path, epub_path, lang):
         TESS_TO_CALIBRE_LANG = {
             "por": "pt-BR",  # Brazilian Portuguese
             "eng": "en-US",  # US English
-            "spa": "es",     # Spanish
-            "fra": "fr",     # French
+            "spa": "es",  # Spanish
+            "fra": "fr",  # French
             "deu": "de-DE",  # German
-            "ita": "it",     # Italian
-            "nld": "nl",     # Dutch
-            "rus": "ru",     # Russian
-            "tur": "tr",     # Turkish
-            "jpn": "ja",     # Japanese
+            "ita": "it",  # Italian
+            "nld": "nl",  # Dutch
+            "rus": "ru",  # Russian
+            "tur": "tr",  # Turkish
+            "jpn": "ja",  # Japanese
             "chi_sim": "zh-CN",  # Simplified Chinese
             "chi_tra": "zh-TW",  # Traditional Chinese
             "chi_sim_vert": "zh-CN",  # Simplified Chinese (vertical)
             "chi_tra_vert": "zh-TW",  # Traditional Chinese (vertical)
-            "heb": "he",     # Hebrew
+            "heb": "he",  # Hebrew
         }
 
         tess_lang = lang.lower()  # Normalize language code
@@ -270,14 +270,22 @@ def convert_docx_to_epub(docx_path, epub_path, lang):
             "ebook-convert",
             str(docx_path),  # Ensure path is string
             str(epub_path),  # Ensure path is string
-            "--title", title,
-            "--authors", "pdf2ocr",
-            "--comments", "Converted by pdf2ocr",
-            "--chapter", "//h:h1",  # Use h1 headings as chapter markers
-            "--chapter-mark", "pagebreak",  # Add page breaks at chapters
-            "--level1-toc", "//h:h1",  # Use h1 headings in TOC
-            "--toc-threshold", "1",  # Include all headings in TOC
-            "--max-toc-links", "50",  # Reasonable limit for TOC entries
+            "--title",
+            title,
+            "--authors",
+            "pdf2ocr",
+            "--comments",
+            "Converted by pdf2ocr",
+            "--chapter",
+            "//h:h1",  # Use h1 headings as chapter markers
+            "--chapter-mark",
+            "pagebreak",  # Add page breaks at chapters
+            "--level1-toc",
+            "//h:h1",  # Use h1 headings in TOC
+            "--toc-threshold",
+            "1",  # Include all headings in TOC
+            "--max-toc-links",
+            "50",  # Reasonable limit for TOC entries
             "--pretty-print",  # Format HTML for better readability
         ]
 
@@ -286,21 +294,36 @@ def convert_docx_to_epub(docx_path, epub_path, lang):
 
         # Check if source file exists
         if not os.path.exists(docx_path):
-            return False, time.perf_counter() - start, f"Source file not found: {docx_path}"
+            return (
+                False,
+                time.perf_counter() - start,
+                f"Source file not found: {docx_path}",
+            )
 
         # Ensure output directory exists
         os.makedirs(os.path.dirname(epub_path), exist_ok=True)
 
+        # Run Calibre command and capture output
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            check=True,
+            check=True
         )
-        return True, time.perf_counter() - start, result.stdout
+
+        # Check if output file exists
+        if not os.path.exists(epub_path):
+            return False, time.perf_counter() - start, "Output file not created"
+
+        # Combine stdout and stderr for logging
+        output = result.stdout
+        if result.stderr:
+            output = f"{output}\n{result.stderr}"
+
+        return True, time.perf_counter() - start, output
 
     except subprocess.CalledProcessError as e:
-        error_msg = f"EPUB conversion failed: {e.stderr}"
+        error_msg = f"EPUB conversion failed: {e.stdout}"  # Use stdout since we merged stderr
         if "ebook-convert: command not found" in str(e):
             error_msg = "Calibre (ebook-convert) not found. Please install Calibre and ensure it's in your PATH."
         return False, time.perf_counter() - start, error_msg
