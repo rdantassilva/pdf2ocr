@@ -106,22 +106,6 @@ def convert_image_to_pdf(image: Image.Image) -> PdfReader:
             os.unlink(temp_file.name)
 
 
-def make_invisible_text_layer(page_size, text, font_name="Helvetica", font_size=10):
-    """Create an invisible text layer for a PDF page.
-
-    Args:
-        page_size (tuple): Page dimensions (width, height)
-        text (str): Text to add to the page
-        font_name (str): Font to use
-        font_size (int): Font size
-
-    Returns:
-        bytes: PDF page with invisible text
-    """
-    # Implementation of the function
-    pass
-
-
 def extract_text_from_image(image: Image.Image, lang: str) -> str:
     """Extract text from an image using OCR.
 
