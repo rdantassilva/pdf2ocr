@@ -54,7 +54,7 @@ def preprocess_image(img):
 
 
 def clean_text_portuguese(text):
-    """Cleans text by removing unwanted (non-ASCII) non-Portuguese special characters, preserving Portuguese common caracters.
+    """Cleans text by removing unwanted (non-ASCII) non-Portuguese special characters, preserving Portuguese common characters.
 
     Args:
         text (str): Text to clean
