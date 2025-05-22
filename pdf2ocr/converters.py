@@ -3,20 +3,12 @@
 import os
 import subprocess
 import time
-import unicodedata
 from typing import Union, List
 
 from docx import Document
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
-
-
-def remove_accents(text):
-    """Remove accents from text while preserving base characters."""
-    return (
-        unicodedata.normalize("NFKD", text).encode("ASCII", "ignore").decode("ASCII")
-    )
 
 
 def save_as_docx(text, output_path):
@@ -70,15 +62,17 @@ def save_as_pdf(text_pages, output_path, filename):
 
     Key features:
     - Creates a new PDF with clean, consistent formatting
-    - Adds page headers with source filename and page numbers
+    - Adds simple page numbers for navigation
     - Uses standard fonts and margins for optimal readability
     - Creates output in 'pdf_ocr' directory
+    - Includes PDF metadata (title, author, creation info)
 
     Technical approach:
     1. Uses reportlab to generate a new PDF from scratch
     2. Applies consistent formatting (margins, fonts, spacing)
     3. Preserves paragraph structure from OCR text
     4. Handles text flow and automatic pagination
+    5. Adds document metadata
 
     Args:
         text_pages (list): List of text content for each page
@@ -93,7 +87,18 @@ def save_as_pdf(text_pages, output_path, filename):
         Choose this method when you want a clean, reformatted version of the document.
     """
     start = time.perf_counter()
+    
+    # Get title from filename
+    title = os.path.splitext(os.path.basename(output_path))[0].replace("_", " ")
+    
+    # Create PDF with metadata
     c = canvas.Canvas(output_path, pagesize=A4)
+    c.setTitle(title)
+    c.setAuthor("pdf2ocr")
+    c.setCreator("pdf2ocr")
+    c.setSubject("OCR processed document")
+    c.setKeywords("OCR, PDF, text recognition")
+    
     width, height = A4
 
     # Skip empty pages at the start
@@ -108,10 +113,9 @@ def save_as_pdf(text_pages, output_path, filename):
         y = height - 3 * cm  # Top margin
 
         # Page header
-        c.setFont("Helvetica-Bold", 10)
-        header = f"OCR - {filename} - Pag. {idx}"
-        header = remove_accents(header)
-        c.drawCentredString(width / 2, height - 1 * cm, header)
+        c.setFont("Helvetica", 10)  # Changed to regular weight for consistency
+        header = f"pdf2ocr - Page {idx}"  # New header format
+        c.drawString(x, height - 1 * cm, header)  # Aligned left like HTML
 
         # Main text
         c.setFont("Helvetica", 10)
@@ -129,6 +133,9 @@ def save_as_pdf(text_pages, output_path, filename):
                     if y < 2 * cm:  # Check page end
                         c.showPage()
                         y = height - 3 * cm
+                        # Repeat header on new page
+                        c.setFont("Helvetica", 10)
+                        c.drawString(x, height - 1 * cm, header)
                         c.setFont("Helvetica", 10)
             y -= line_height  # Extra space between paragraphs
 

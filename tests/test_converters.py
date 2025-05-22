@@ -1,22 +1,7 @@
 import os
 import pytest
-from pdf2ocr.converters import remove_accents, save_as_docx, save_as_html
+from pdf2ocr.converters import save_as_docx, save_as_html
 from docx import Document
-
-def test_remove_accents():
-    """Test accent removal from text"""
-    test_cases = [
-        ("áéíóú", "aeiou"),
-        ("àãõâêô", "aaoaeo"),
-        ("ÁÉÍÓÚ", "AEIOU"),
-        ("çÇ", "cC"),
-        ("texto sem acento", "texto sem acento"),
-        ("múltiplas    palavras", "multiplas    palavras"),
-        ("símbolos!@#$%", "simbolos!@#$%"),
-    ]
-    
-    for input_text, expected in test_cases:
-        assert remove_accents(input_text) == expected
 
 def test_save_as_docx(tmp_path):
     """Test DOCX file generation and content"""

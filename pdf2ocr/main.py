@@ -94,7 +94,7 @@ def process_single_pdf(filename: str, config: ProcessingConfig) -> tuple:
         with timing_context(f"Processing {filename}", logger) as get_file_time:
             try:
                 # Process PDF pages with OCR
-                pages = process_pdf_with_ocr(pdf_path, config.lang, config.dpi, logger)
+                pages = process_pdf_with_ocr(pdf_path, config.lang, logger)
                 page_texts = [text for _, text in pages]
                 
                 # Generate output files based on configuration
@@ -495,10 +495,19 @@ def parse_arguments():
         help="OCR language code (default: por). Use `tesseract --list-langs` to view options.",
     )
     parser.add_argument(
-        "--dpi",
-        type=int,
-        default=400,
-        help="DPI for image conversion (default: 400)",
+        "--quiet",
+        action="store_true",
+        help="Run silently without progress output",
+    )
+    parser.add_argument(
+        "--summary",
+        action="store_true",
+        help="Display only final conversion summary",
+    )
+    parser.add_argument(
+        "--log",
+        help="Path to log file (optional)",
+        default=None,
     )
     parser.add_argument(
         "--workers",
@@ -506,15 +515,6 @@ def parse_arguments():
         default=2,
         help="Number of parallel workers for processing (default: 2)",
     )
-    parser.add_argument("--quiet", action="store_true", help="Run silently (no output)")
-    parser.add_argument(
-        "--short-output",
-        "--summary-output",
-        dest="summary_output",
-        action="store_true",
-        help="Display only final conversion summary (short output mode)",
-    )
-    parser.add_argument("--logfile", help="Path to log file (optional)")
     parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
 
@@ -529,15 +529,14 @@ def main():
             source_dir=args.source_dir,
             dest_dir=args.dest_dir,
             lang=args.lang,
-            dpi=args.dpi,
             generate_pdf=args.pdf,
             generate_html=args.html,
             generate_docx=args.docx,
             generate_epub=args.epub,
             preserve_layout=args.preserve_layout,
             quiet=args.quiet,
-            summary_output=args.summary_output,
-            log_path=args.logfile,
+            summary_output=args.summary,
+            log_path=args.log,
             workers=args.workers
         )
         

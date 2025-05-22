@@ -173,13 +173,12 @@ ET""".strip().encode('utf-8')
     return form
 
 
-def process_pdf_with_ocr(pdf_path: str, lang: str, dpi: int, logger: Optional[TextIO] = None) -> List[Tuple[Image.Image, str]]:
+def process_pdf_with_ocr(pdf_path: str, lang: str, logger: Optional[TextIO] = None) -> List[Tuple[Image.Image, str]]:
     """Process a PDF file with OCR.
     
     Args:
         pdf_path: Path to the PDF file
         lang: Language code for OCR
-        dpi: DPI for image conversion
         logger: Optional logger for messages
         
     Returns:
@@ -187,7 +186,7 @@ def process_pdf_with_ocr(pdf_path: str, lang: str, dpi: int, logger: Optional[Te
     """
     # Convert PDF to images
     try:
-        images = convert_from_path(pdf_path, dpi=dpi)
+        images = convert_from_path(pdf_path, dpi=400)  # Fixed at 400 DPI for OCR
     except Exception as e:
         if logger:
             log_message(logger, "ERROR", f"Error converting PDF: {str(e)}", quiet=True)
@@ -228,8 +227,8 @@ def extract_text_from_pdf(pdf_source_path, tesseract_config, lang, quiet=False):
     logger = setup_logging(quiet=quiet)
     
     pages = convert_from_path(
-        pdf_source_path, dpi=400
-    )  # Convert PDF to images (400 DPI)
+        pdf_source_path, dpi=400  # Fixed at 400 DPI for OCR
+    )
     final_text = ""
     page_texts = []
 

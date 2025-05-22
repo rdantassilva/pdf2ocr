@@ -20,7 +20,6 @@ class ProcessingConfig:
         source_dir: Directory containing source PDF files
         dest_dir: Directory for output files (defaults to source_dir if None)
         lang: Tesseract language code (e.g. 'por' for Portuguese)
-        dpi: DPI for image conversion
         generate_docx: Whether to generate DOCX files
         generate_pdf: Whether to generate searchable PDF files
         generate_epub: Whether to generate EPUB files
@@ -34,7 +33,6 @@ class ProcessingConfig:
     source_dir: str
     dest_dir: Optional[str] = None
     lang: str = "por"
-    dpi: int = 400
     generate_docx: bool = False
     generate_pdf: bool = False
     generate_epub: bool = False
@@ -97,7 +95,4 @@ class ProcessingConfig:
 
         # Skip directory validation in test environment
         if not self.source_dir.startswith("/test/") and not os.path.isdir(self.source_dir):
-            raise ValueError(f"Source directory not found: {self.source_dir}")
-
-        if self.dpi <= 0:
-            raise ValueError("DPI must be a positive integer") 
+            raise ValueError(f"Source directory not found: {self.source_dir}") 
