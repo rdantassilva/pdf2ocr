@@ -70,7 +70,7 @@ def test_save_as_docx_multiple_paragraphs(tmp_path):
 def test_save_as_html(tmp_path):
     """Test HTML file generation and content"""
     output_file = tmp_path / "test.html"
-    test_text = ["Line 1\nLine 2", "Paragraph 2"]  # Lista de páginas
+    test_text = ["Line 1\nLine 2", "Paragraph 2"]  # List of pages
     
     # Save the HTML
     save_as_html(test_text, str(output_file))
