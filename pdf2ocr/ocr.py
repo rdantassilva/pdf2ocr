@@ -200,7 +200,7 @@ def extract_text_from_pdf(
     lang_code: str = "por",
     quiet: bool = False,
     summary: bool = False,
-    batch_size: int = 10
+    batch_size: int = 10,
 ) -> Tuple[str, List[str], float]:
     """Extract text from PDF using OCR.
 
@@ -216,14 +216,16 @@ def extract_text_from_pdf(
         tuple: (combined text, list of page texts, processing time)
     """
     start_time = time.time()
-    text_pages = []
     final_text = []
 
     try:
         # Get total number of pages
-        with open(pdf_path, 'rb') as f:
+        with open(pdf_path, "rb") as f:
             pdf = PdfReader(f)
             total_pages = len(pdf.pages)
+
+        # Pre-allocate text_pages list with empty strings
+        text_pages = [""] * total_pages
 
         # Configure tqdm to write to /dev/null in quiet mode
         tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
@@ -236,19 +238,19 @@ def extract_text_from_pdf(
                 unit="batch",
                 file=tqdm_file,
                 disable=quiet or summary,
-                leave=False
+                leave=False,
             ):
                 batch_end = min(batch_start + batch_size - 1, total_pages)
-                
+
                 # Convert batch of pages to images
                 pages_batch = convert_from_path(
                     pdf_path,
                     dpi=400,
                     first_page=batch_start,
                     last_page=batch_end,
-                    use_pdftocairo=True
+                    use_pdftocairo=True,
                 )
-                
+
                 # Process each page in the batch
                 for page_num, page_img in enumerate(
                     tqdm(
@@ -258,20 +260,17 @@ def extract_text_from_pdf(
                         file=tqdm_file,
                         disable=quiet or summary,
                         leave=False,
-                        position=1
+                        position=1,
                     ),
-                    start=batch_start - 1
+                    start=batch_start - 1,
                 ):
                     # Extract text from image
                     text = extract_text_from_image(page_img, lang_code)
-                    
-                    # Ensure we have enough slots in text_pages
-                    while len(text_pages) <= page_num:
-                        text_pages.append("")
-                    
+
+                    # Store text directly in pre-allocated list
                     text_pages[page_num] = text
                     final_text.append(text)
-                
+
                 # Explicitly free memory
                 del pages_batch
 

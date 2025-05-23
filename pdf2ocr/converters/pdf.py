@@ -174,7 +174,7 @@ def process_single_layout_pdf(
         total_time = 0.0
 
         # Get total number of pages
-        with open(pdf_path, 'rb') as f:
+        with open(pdf_path, "rb") as f:
             pdf = PdfReader(f)
             total_pages = len(pdf.pages)
 
@@ -199,19 +199,21 @@ def process_single_layout_pdf(
                         unit="batch",
                         file=tqdm_file,
                         disable=config.quiet or config.summary,
-                        leave=False
+                        leave=False,
                     ):
-                        batch_end = min(batch_start + config.batch_size - 1, total_pages)
-                        
+                        batch_end = min(
+                            batch_start + config.batch_size - 1, total_pages
+                        )
+
                         # Convert batch of pages to images
                         pages_batch = convert_from_path(
                             pdf_path,
                             dpi=200,
                             first_page=batch_start,
                             last_page=batch_end,
-                            use_pdftocairo=True
+                            use_pdftocairo=True,
                         )
-                        
+
                         # Process each page in the batch
                         for page_num, page_img in enumerate(
                             tqdm(
@@ -221,9 +223,9 @@ def process_single_layout_pdf(
                                 file=tqdm_file,
                                 disable=config.quiet or config.summary,
                                 leave=False,
-                                position=1
+                                position=1,
                             ),
-                            start=batch_start - 1
+                            start=batch_start - 1,
                         ):
                             # Save image to temporary file with high quality for OCR
                             img_path = os.path.join(temp_dir, f"page_{page_num}.png")
@@ -372,25 +374,29 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 logger,
                 "INFO",
                 "",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 f"Processing {len(pdf_files)} files using {max_workers} workers",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 f"Batch-size: {config.batch_size} pages",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 "",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
 
             # Track processing statistics
@@ -585,7 +591,7 @@ def process_single_pdf(
                 config.get_tesseract_config(),
                 quiet=config.quiet,
                 summary=config.summary,
-                batch_size=config.batch_size
+                batch_size=config.batch_size,
             )
         total_time += get_text_time.duration
         log_messages.append(
@@ -757,25 +763,29 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                 logger,
                 "INFO",
                 "",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 f"Processing {len(pdf_files)} files using {max_workers} workers",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 f"Batch-size: {config.batch_size} pages",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
                 logger,
                 "INFO",
                 "",
-                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
             )
 
             # Track processing statistics
