@@ -200,70 +200,90 @@ def extract_text_from_pdf(
     lang_code: str = "por",
     quiet: bool = False,
     summary: bool = False,
+    batch_size: int = 10
 ) -> Tuple[str, List[str], float]:
     """Extract text from PDF using OCR.
 
     Args:
         pdf_path: Path to PDF file
         tesseract_config: Tesseract configuration options
-        lang_code: Language code for OCR (default: Portuguese)
+        lang_code: Language code for OCR (default: por)
         quiet: Whether to suppress progress output
-        summary: Whether to show only final summary
+        summary: Whether to show only summary output
+        batch_size: Number of pages to process in each batch (default: 10)
 
     Returns:
         tuple: (combined text, list of page texts, processing time)
     """
-    start_time = time.perf_counter()
+    start_time = time.time()
     text_pages = []
+    final_text = []
 
     try:
-        # Convert PDF to images
-        images = convert_from_path(pdf_path, use_pdftocairo=True)
+        # Get total number of pages
+        with open(pdf_path, 'rb') as f:
+            pdf = PdfReader(f)
+            total_pages = len(pdf.pages)
 
         # Configure tqdm to write to /dev/null in quiet mode
         tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
 
         try:
-            # Process each page with OCR
-            for page_num, image in enumerate(
-                tqdm(
-                    images,
-                    desc="Processing pages",
-                    unit="page",
-                    file=tqdm_file,
-                    disable=quiet or summary,
-                    leave=False,
-                ),
-                start=1,
+            # Process pages in batches
+            for batch_start in tqdm(
+                range(1, total_pages + 1, batch_size),
+                desc="Processing batches",
+                unit="batch",
+                file=tqdm_file,
+                disable=quiet or summary,
+                leave=False
             ):
-                # Convert image to bytes
-                img_bytes = BytesIO()
-                image.save(img_bytes, format="PNG")
-                img_bytes = img_bytes.getvalue()
-
-                # Extract text using OCR
-                # Split the config string into a list and filter out empty strings
-                config_list = [opt for opt in tesseract_config.split() if opt]
-                text = image_to_string(
-                    Image.open(BytesIO(img_bytes)),
-                    lang=lang_code,
-                    config=" ".join(config_list),
+                batch_end = min(batch_start + batch_size - 1, total_pages)
+                
+                # Convert batch of pages to images
+                pages_batch = convert_from_path(
+                    pdf_path,
+                    dpi=400,
+                    first_page=batch_start,
+                    last_page=batch_end,
+                    use_pdftocairo=True
                 )
-
-                text_pages.append(text)
+                
+                # Process each page in the batch
+                for page_num, page_img in enumerate(
+                    tqdm(
+                        pages_batch,
+                        desc=f"Pages {batch_start}-{batch_end}",
+                        unit="page",
+                        file=tqdm_file,
+                        disable=quiet or summary,
+                        leave=False,
+                        position=1
+                    ),
+                    start=batch_start - 1
+                ):
+                    # Extract text from image
+                    text = extract_text_from_image(page_img, lang_code)
+                    
+                    # Ensure we have enough slots in text_pages
+                    while len(text_pages) <= page_num:
+                        text_pages.append("")
+                    
+                    text_pages[page_num] = text
+                    final_text.append(text)
+                
+                # Explicitly free memory
+                del pages_batch
 
         finally:
             # Close tqdm file if it was opened
             if tqdm_file != sys.stderr:
                 tqdm_file.close()
 
-        # Combine all pages
-        final_text = "\n\n".join(text_pages)
-
-        return final_text, text_pages, time.perf_counter() - start_time
-
     except Exception as e:
         raise OCRError(f"Error during OCR processing: {str(e)}")
+
+    return "\n\n".join(final_text), text_pages, time.time() - start_time
 
 
 def validate_tesseract_language(

@@ -30,6 +30,7 @@ class ProcessingConfig:
         summary: Display only final conversion summary
         log_path: Path to log file (optional)
         workers: Number of parallel workers for processing
+        batch_size: Number of pages to process in each batch (default: 10)
     """
 
     source_dir: str
@@ -44,6 +45,7 @@ class ProcessingConfig:
     summary: bool = False
     log_path: Optional[str] = None
     workers: int = 2
+    batch_size: int = 10
 
     def __post_init__(self):
         # Initialize derived paths

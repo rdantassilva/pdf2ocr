@@ -171,104 +171,144 @@ def process_single_layout_pdf(
         out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
         temp_pdf_path = os.path.join(config.pdf_dir, f"{base_name}_temp.pdf")
 
-        with timing_context(f"Processing {filename}", logger) as get_file_time:
-            # Convert PDF to images with high DPI for better OCR
-            pages = convert_from_path(pdf_path, dpi=200, use_pdftocairo=True)
+        total_time = 0.0
 
-            # Process each page with OCR
-            pdf_pages = []
+        # Get total number of pages
+        with open(pdf_path, 'rb') as f:
+            pdf = PdfReader(f)
+            total_pages = len(pdf.pages)
 
-            # Create temporary directory for processing
-            with tempfile.TemporaryDirectory() as temp_dir:
-                with timing_context("OCR processing", None) as get_ocr_time:
-                    # Configure tqdm to write to /dev/null in quiet mode
-                    tqdm_file = (
-                        open(os.devnull, "w")
-                        if (config.quiet or config.summary)
-                        else sys.stderr
-                    )
-                    for page_num, page_img in enumerate(
-                        tqdm(
-                            pages,
-                            desc="Processing pages",
-                            unit="page",
-                            file=tqdm_file,
-                            disable=config.quiet or config.summary,
-                            leave=False,
-                        )
+        # Process each page with OCR
+        pdf_pages = []
+
+        # Create temporary directory for processing
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with timing_context("OCR processing", None) as get_ocr_time:
+                # Configure tqdm to write to /dev/null in quiet mode
+                tqdm_file = (
+                    open(os.devnull, "w")
+                    if (config.quiet or config.summary)
+                    else sys.stderr
+                )
+
+                try:
+                    # Process pages in batches
+                    for batch_start in tqdm(
+                        range(1, total_pages + 1, config.batch_size),
+                        desc="Processing batches",
+                        unit="batch",
+                        file=tqdm_file,
+                        disable=config.quiet or config.summary,
+                        leave=False
                     ):
-                        # Save image to temporary file with high quality for OCR
-                        img_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                        page_img.save(img_path, "PNG")
-
-                        # Generate PDF with OCR using tesseract
-                        pdf_path = os.path.join(temp_dir, f"page_{page_num}")
-                        cmd = [
-                            "tesseract",
-                            img_path,
+                        batch_end = min(batch_start + config.batch_size - 1, total_pages)
+                        
+                        # Convert batch of pages to images
+                        pages_batch = convert_from_path(
                             pdf_path,
-                            "-l",
-                            config.lang,
-                            "--dpi",
-                            "200",
-                            "pdf",
-                        ]
-                        subprocess.run(cmd, check=True, capture_output=True)
+                            dpi=200,
+                            first_page=batch_start,
+                            last_page=batch_end,
+                            use_pdftocairo=True
+                        )
+                        
+                        # Process each page in the batch
+                        for page_num, page_img in enumerate(
+                            tqdm(
+                                pages_batch,
+                                desc=f"Pages {batch_start}-{batch_end}",
+                                unit="page",
+                                file=tqdm_file,
+                                disable=config.quiet or config.summary,
+                                leave=False,
+                                position=1
+                            ),
+                            start=batch_start - 1
+                        ):
+                            # Save image to temporary file with high quality for OCR
+                            img_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                            page_img.save(img_path, "PNG")
 
-                        # Read generated PDF
-                        with open(f"{pdf_path}.pdf", "rb") as f:
-                            pdf_pages.append(f.read())
+                            # Generate PDF with OCR using tesseract
+                            pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
+                            cmd = [
+                                "tesseract",
+                                img_path,
+                                pdf_path_base,
+                                "-l",
+                                config.lang,
+                                "--dpi",
+                                "200",
+                                "pdf",
+                            ]
+                            subprocess.run(cmd, check=True, capture_output=True)
 
+                            # Read generated PDF
+                            with open(f"{pdf_path_base}.pdf", "rb") as f:
+                                # Ensure we have enough slots in pdf_pages
+                                while len(pdf_pages) <= page_num:
+                                    pdf_pages.append(None)
+                                pdf_pages[page_num] = f.read()
+
+                        # Explicitly free memory
+                        del pages_batch
+
+                finally:
                     # Close tqdm file if it was opened
                     if tqdm_file != sys.stderr:
                         tqdm_file.close()
 
-                log_messages = [
-                    (
-                        "INFO",
-                        f"  OCR processing took {get_ocr_time.duration:.2f} seconds",
-                    )
-                ]
+            total_time += get_ocr_time.duration
+            log_messages = [
+                (
+                    "INFO",
+                    f"  OCR processing took {get_ocr_time.duration:.2f} seconds",
+                )
+            ]
 
-                # Merge PDF pages into temporary file
-                with timing_context("PDF merging", None) as get_merge_time:
-                    writer = PdfWriter()
-                    writer.compress = True
+            # Merge PDF pages into temporary file
+            with timing_context("PDF merging", None) as get_merge_time:
+                writer = PdfWriter()
+                writer.compress = True
 
-                    for page_pdf in pdf_pages:
+                for page_pdf in pdf_pages:
+                    if page_pdf is not None:  # Skip any missing pages
                         reader = PdfReader(io.BytesIO(page_pdf))
                         writer.add_page(reader.pages[0])
 
-                    with open(temp_pdf_path, "wb") as fout:
-                        writer.write(fout)
+                with open(temp_pdf_path, "wb") as fout:
+                    writer.write(fout)
 
-                # Compress the final PDF using Ghostscript
-                with timing_context("PDF compression", None) as get_compress_time:
-                    cmd = [
-                        "gs",
-                        "-sDEVICE=pdfwrite",
-                        "-dCompatibilityLevel=1.4",
-                        "-dPDFSETTINGS=/ebook",  # Balance between quality and size
-                        "-dNOPAUSE",
-                        "-dQUIET",
-                        "-dBATCH",
-                        f"-sOutputFile={out_path}",
-                        temp_pdf_path,
-                    ]
-                    subprocess.run(cmd, check=True, capture_output=True)
+            total_time += get_merge_time.duration
 
-                    # Remove temporary PDF
-                    if os.path.exists(temp_pdf_path):
-                        os.remove(temp_pdf_path)
+            # Compress the final PDF using Ghostscript
+            with timing_context("PDF compression", None) as get_compress_time:
+                cmd = [
+                    "gs",
+                    "-sDEVICE=pdfwrite",
+                    "-dCompatibilityLevel=1.4",
+                    "-dPDFSETTINGS=/ebook",  # Balance between quality and size
+                    "-dNOPAUSE",
+                    "-dQUIET",
+                    "-dBATCH",
+                    f"-sOutputFile={out_path}",
+                    temp_pdf_path,
+                ]
+                subprocess.run(cmd, check=True, capture_output=True)
 
-                log_messages.append(
-                    (
-                        "INFO",
-                        f"  Layout-preserving PDF created and compressed in {get_merge_time.duration + get_compress_time.duration:.2f} seconds",
-                    )
+                # Remove temporary PDF
+                if os.path.exists(temp_pdf_path):
+                    os.remove(temp_pdf_path)
+
+            total_time += get_compress_time.duration
+            log_messages.append(
+                (
+                    "INFO",
+                    f"  Layout-preserving PDF created and compressed in {get_merge_time.duration + get_compress_time.duration:.2f} seconds",
                 )
+            )
 
-            return True, get_file_time.stop(), None, log_messages
+            return True, total_time, None, log_messages
 
     except Exception as e:
         error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
@@ -331,13 +371,27 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
             log_message(
                 logger,
                 "INFO",
-                f"Processing {len(pdf_files)} files using {max_workers} worker{'s' if max_workers > 1 else ''}",
-                quiet=config.quiet
-                or config.summary,  # Hide in both quiet and summary modes
+                "",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
             )
             log_message(
-                logger, "INFO", "", quiet=config.quiet or config.summary
-            )  # Empty line for readability
+                logger,
+                "INFO",
+                f"Processing {len(pdf_files)} files using {max_workers} workers",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                f"Batch-size: {config.batch_size} pages",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                "",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
 
             # Track processing statistics
             completed = 0
@@ -522,6 +576,8 @@ def process_single_pdf(
         out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
         temp_pdf_path = os.path.join(config.pdf_dir, f"{base_name}_temp.pdf")
 
+        total_time = 0.0
+
         # Extract text from PDF
         with timing_context("Text extraction", None) as get_text_time:
             final_text, text_pages, ocr_time = extract_text_from_pdf(
@@ -529,7 +585,9 @@ def process_single_pdf(
                 config.get_tesseract_config(),
                 quiet=config.quiet,
                 summary=config.summary,
+                batch_size=config.batch_size
             )
+        total_time += get_text_time.duration
         log_messages.append(
             (
                 "INFO",
@@ -542,6 +600,7 @@ def process_single_pdf(
             if config.generate_pdf:
                 with timing_context("PDF generation", None) as get_pdf_time:
                     save_as_pdf(text_pages, out_path)
+                total_time += get_pdf_time.duration
                 log_messages.append(
                     (
                         "INFO",
@@ -553,6 +612,7 @@ def process_single_pdf(
                 with timing_context("DOCX generation", None) as get_docx_time:
                     docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
                     save_as_docx(text_pages, docx_output)
+                total_time += get_docx_time.duration
                 log_messages.append(
                     (
                         "INFO",
@@ -564,6 +624,7 @@ def process_single_pdf(
                 with timing_context("HTML generation", None) as get_html_time:
                     html_output = os.path.join(config.html_dir, f"{base_name}.html")
                     save_as_html(text_pages, html_output)
+                total_time += get_html_time.duration
                 log_messages.append(
                     (
                         "INFO",
@@ -586,6 +647,7 @@ def process_single_pdf(
                         raise RuntimeError(
                             f"Failed to convert {base_name} to EPUB: {output}"
                         )
+                total_time += get_epub_time.duration
                 log_messages.append(
                     (
                         "INFO",
@@ -593,7 +655,7 @@ def process_single_pdf(
                     )
                 )
 
-            return True, get_file_time.stop(), None, log_messages
+            return True, total_time, None, log_messages
 
     except Exception as e:
         error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
@@ -694,9 +756,26 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
             log_message(
                 logger,
                 "INFO",
-                f"\nProcessing {len(pdf_files)} files using {max_workers} workers\n",
-                quiet=config.quiet
-                or config.summary,  # Hide in both quiet and summary modes
+                "",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                f"Processing {len(pdf_files)} files using {max_workers} workers",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                f"Batch-size: {config.batch_size} pages",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                "",
+                quiet=config.quiet or config.summary,  # Hide in both quiet and summary modes
             )
 
             # Track processing statistics

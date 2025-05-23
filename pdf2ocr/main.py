@@ -129,6 +129,12 @@ def parse_arguments():
         default=2,
         help="Number of parallel workers for processing (default: 2)",
     )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=10,
+        help="Number of pages to process in each batch (default: 10)",
+    )
     parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
 
@@ -152,6 +158,7 @@ def main():
             summary=args.summary,
             log_path=args.logfile,
             workers=args.workers,
+            batch_size=args.batch_size,
         )
 
         # Set up logging
