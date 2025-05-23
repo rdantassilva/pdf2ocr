@@ -51,10 +51,9 @@ import sys
 
 from pdf2ocr import __version__
 from pdf2ocr.config import ProcessingConfig
-from pdf2ocr.converters import (process_pdfs_with_ocr, process_layout_pdf_only)
+from pdf2ocr.converters import process_layout_pdf_only, process_pdfs_with_ocr
 from pdf2ocr.logging_config import close_logging, log_message, setup_logging
-from pdf2ocr.ocr import validate_tesseract_language
-from pdf2ocr.state import shutdown_requested
+from pdf2ocr.ocr import LANG_NAMES, validate_tesseract_language
 
 
 def signal_handler(signum, frame):
@@ -136,55 +135,50 @@ def parse_arguments():
 
 def main():
     """Main entry point for the PDF OCR converter."""
-    args = parse_arguments()
-
     try:
-        # Create configuration from arguments
+        args = parse_arguments()
+
+        # Create processing configuration
         config = ProcessingConfig(
             source_dir=args.source_dir,
             dest_dir=args.dest_dir,
-            lang=args.lang,
             generate_pdf=args.pdf,
-            generate_html=args.html,
             generate_docx=args.docx,
+            generate_html=args.html,
             generate_epub=args.epub,
             preserve_layout=args.preserve_layout,
+            lang=args.lang,
             quiet=args.quiet,
-            summary_output=args.summary,
+            summary=args.summary,
             log_path=args.logfile,
             workers=args.workers,
         )
 
-        # Setup logging
+        # Set up logging
         logger = setup_logging(config.log_path, config.quiet)
 
-        try:
-            # Show version info and validate language only in normal mode (not quiet, not summary)
-            show_header = not (config.quiet or config.summary_output)
+        # Show version information and language model info
+        # In quiet mode, these should be suppressed
+        log_message(logger, "INFO", f"PDF2OCR v{__version__}", quiet=config.quiet)
+        log_message(
+            logger,
+            "INFO",
+            f"Using Tesseract language model: {config.lang} ({LANG_NAMES.get(config.lang, 'Unknown')})",
+            quiet=config.quiet,
+        )
 
-            # Show version info first
-            log_message(
-                logger, "HEADER", f"PDF2OCR v{__version__}", quiet=not show_header
-            )
-            log_message(
-                logger, "INFO", "", quiet=not show_header
-            )  # Add empty line after version
+        # Process PDFs based on layout preservation setting
+        if config.preserve_layout:
+            process_layout_pdf_only(config, logger)
+        else:
+            process_pdfs_with_ocr(config, logger)
 
-            # Validate Tesseract language
-            validate_tesseract_language(args.lang, logger, not show_header)
-
-            # Process PDFs
-            if config.preserve_layout:
-                process_layout_pdf_only(config, logger)
-            else:
-                process_pdfs_with_ocr(config, logger)
-
-        finally:
-            close_logging(logger)
-
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user")
+        sys.exit(1)
     except Exception as e:
-        if not args.quiet:
-            log_message(None, "ERROR", str(e), quiet=args.quiet)
+        print(f"Error processing PDFs: {str(e)}")
+        print(str(e))
         sys.exit(1)
 
 

@@ -14,7 +14,7 @@ def test_config_defaults():
     assert not config.generate_html
     assert not config.preserve_layout
     assert not config.quiet
-    assert not config.summary_output
+    assert not config.summary
     assert config.log_path is None
 
 def test_config_validation_no_output():

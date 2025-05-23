@@ -4,10 +4,11 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import time
 from io import BytesIO
-from typing import Optional
+from typing import List, Optional, Tuple
 
 from pdf2image import convert_from_path
 from PIL import Image, ImageFilter, ImageOps
@@ -17,6 +18,13 @@ from reportlab.pdfgen import canvas
 from tqdm import tqdm
 
 from pdf2ocr.logging_config import log_message
+
+
+class OCRError(Exception):
+    """Exception raised for errors during OCR processing."""
+
+    pass
+
 
 # Map most common languages (Tesseract code → Human-readable name)
 LANG_NAMES = {
@@ -152,14 +160,30 @@ def process_pdf_with_ocr(
 
     try:
         # Convert PDF to images
-        images = convert_from_path(pdf_path, dpi=400)
+        images = convert_from_path(pdf_path, dpi=400, use_pdftocairo=True)
 
-        # Process each page with OCR
-        for i, image in enumerate(
-            tqdm(images, desc="Processing pages", unit="page", disable=quiet or summary)
-        ):  # Disable progress bar if quiet or summary mode
-            text = extract_text_from_image(image, lang)
-            pages.append((i + 1, text))
+        # Configure tqdm to write to /dev/null in quiet mode
+        tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
+
+        try:
+            # Process each page with OCR
+            for i, image in enumerate(
+                tqdm(
+                    images,
+                    desc="Processing pages",
+                    unit="page",
+                    file=tqdm_file,
+                    disable=quiet or summary,
+                    leave=False,
+                )
+            ):  # Disable progress bar in both quiet and summary modes
+                text = extract_text_from_image(image, lang)
+                pages.append((i + 1, text))
+
+        finally:
+            # Close tqdm file if it was opened
+            if tqdm_file != sys.stderr:
+                tqdm_file.close()
 
     except Exception as e:
         log_message(
@@ -170,40 +194,76 @@ def process_pdf_with_ocr(
     return pages
 
 
-def extract_text_from_pdf(pdf_source_path, tesseract_config, lang, quiet=False):
-    """Converts PDF to text using OCR.
+def extract_text_from_pdf(
+    pdf_path: str,
+    tesseract_config: List[str],
+    lang_code: str = "por",
+    quiet: bool = False,
+    summary: bool = False,
+) -> Tuple[str, List[str], float]:
+    """Extract text from PDF using OCR.
 
     Args:
-        pdf_source_path (str): Path to the source PDF file
-        tesseract_config (str): Tesseract OCR configuration string
-        lang (str): Language code for OCR
-        quiet (bool): Whether to suppress progress output
+        pdf_path: Path to PDF file
+        tesseract_config: Tesseract configuration options
+        lang_code: Language code for OCR (default: Portuguese)
+        quiet: Whether to suppress progress output
+        summary: Whether to show only final summary
 
     Returns:
-        tuple: (final_text: str, page_texts: list, ocr_time: float)
+        tuple: (combined text, list of page texts, processing time)
     """
-    pages = convert_from_path(pdf_source_path, dpi=400)  # Fixed at 400 DPI for OCR
-    final_text = ""
-    page_texts = []
+    start_time = time.perf_counter()
+    text_pages = []
 
-    # Process each page with progress bar
-    ocr_start = time.perf_counter()
-    for page_img in tqdm(
-        pages, desc="Extracting text (OCR)...", ascii=False, ncols=75, disable=quiet
-    ):
-        page_img = preprocess_image(page_img)  # Pre-processing
-        text = image_to_string(page_img, config=tesseract_config)  # Extract text
+    try:
+        # Convert PDF to images
+        images = convert_from_path(pdf_path, use_pdftocairo=True)
 
-        if lang.lower() == "por":
-            text = clean_text_portuguese(
-                text
-            )  # clean non-ASCII preserving Portuguese characters
+        # Configure tqdm to write to /dev/null in quiet mode
+        tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
 
-        page_texts.append(text)
-        final_text += text + "\n\n"
+        try:
+            # Process each page with OCR
+            for page_num, image in enumerate(
+                tqdm(
+                    images,
+                    desc="Processing pages",
+                    unit="page",
+                    file=tqdm_file,
+                    disable=quiet or summary,
+                    leave=False,
+                ),
+                start=1,
+            ):
+                # Convert image to bytes
+                img_bytes = BytesIO()
+                image.save(img_bytes, format="PNG")
+                img_bytes = img_bytes.getvalue()
 
-    ocr_time = time.perf_counter() - ocr_start
-    return final_text, page_texts, ocr_time
+                # Extract text using OCR
+                # Split the config string into a list and filter out empty strings
+                config_list = [opt for opt in tesseract_config.split() if opt]
+                text = image_to_string(
+                    Image.open(BytesIO(img_bytes)),
+                    lang=lang_code,
+                    config=" ".join(config_list),
+                )
+
+                text_pages.append(text)
+
+        finally:
+            # Close tqdm file if it was opened
+            if tqdm_file != sys.stderr:
+                tqdm_file.close()
+
+        # Combine all pages
+        final_text = "\n\n".join(text_pages)
+
+        return final_text, text_pages, time.perf_counter() - start_time
+
+    except Exception as e:
+        raise OCRError(f"Error during OCR processing: {str(e)}")
 
 
 def validate_tesseract_language(
@@ -242,7 +302,7 @@ def validate_tesseract_language(
             logger,
             "INFO",
             f"Using Tesseract language model: {lang_code} ({LANG_NAMES.get(lang_code, 'Unknown')})",
-            quiet=quiet,
+            quiet=quiet,  # Show in summary mode
         )
 
     except subprocess.CalledProcessError as e:

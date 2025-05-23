@@ -1,8 +1,4 @@
-"""Converters module for pdf2ocr.
-
-This module provides the main conversion functionality for pdf2ocr.
-It imports and re-exports the conversion functions from the specialized submodules.
-"""
+"""PDF conversion and processing functionality."""
 
 from pdf2ocr.converters.docx import save_as_docx
 from pdf2ocr.converters.epub import convert_docx_to_epub

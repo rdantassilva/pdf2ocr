@@ -2,7 +2,7 @@
 
 import os
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from pdf2ocr.logging_config import log_message
 
@@ -27,7 +27,7 @@ class ProcessingConfig:
         generate_html: Whether to generate HTML files
         preserve_layout: Whether to preserve original PDF layout
         quiet: Run silently without progress output
-        summary_output: Display only final conversion summary
+        summary: Display only final conversion summary
         log_path: Path to log file (optional)
         workers: Number of parallel workers for processing
     """
@@ -41,7 +41,7 @@ class ProcessingConfig:
     generate_html: bool = False
     preserve_layout: bool = False
     quiet: bool = False
-    summary_output: bool = False
+    summary: bool = False
     log_path: Optional[str] = None
     workers: int = 2
 
@@ -70,7 +70,7 @@ class ProcessingConfig:
         """Get the appropriate Tesseract configuration based on layout preservation setting.
 
         Returns:
-            str: Tesseract configuration string with language
+            str: Tesseract configuration string
         """
         base_config = (
             TESSERACT_LAYOUT_CONFIG
@@ -79,8 +79,11 @@ class ProcessingConfig:
         )
         return f"{base_config} -l {self.lang}"
 
-    def validate(self) -> None:
+    def validate(self, logger=None) -> None:
         """Validate the configuration settings.
+
+        Args:
+            logger: Optional logger instance for writing messages to log file
 
         Raises:
             ValueError: If no output format is selected
@@ -100,10 +103,10 @@ class ProcessingConfig:
         # Enable DOCX automatically if EPUB is requested
         if self.generate_epub and not self.generate_docx:
             log_message(
-                None,
+                logger,
                 "WARNING",
                 "EPUB generation requires DOCX format. Enabling DOCX generation automatically.",
-                quiet=self.quiet or self.summary_output,
+                quiet=self.quiet,  # Show in summary mode
             )
             self.generate_docx = True
 
@@ -111,10 +114,10 @@ class ProcessingConfig:
         if self.preserve_layout:
             if any([self.generate_docx, self.generate_epub, self.generate_html]):
                 log_message(
-                    None,
+                    logger,
                     "WARNING",
                     "Layout preservation mode only supports PDF output. Other formats will be disabled.",
-                    quiet=self.quiet or self.summary_output,
+                    quiet=self.quiet,  # Show in summary mode
                 )
                 self.generate_docx = False
                 self.generate_epub = False
@@ -122,10 +125,11 @@ class ProcessingConfig:
             if not self.generate_pdf:
                 self.generate_pdf = True
                 log_message(
-                    None,
+                    logger,
                     "INFO",
                     "PDF output automatically enabled for layout preservation mode.",
-                    quiet=self.quiet or self.summary_output,
+                    quiet=self.quiet
+                    or self.summary,  # Hide in both quiet and summary modes
                 )
 
         # Skip directory validation in test environment

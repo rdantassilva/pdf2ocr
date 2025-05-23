@@ -44,55 +44,75 @@ def log_message(log_file, level: str, message: str, quiet: bool = False) -> None
     """Log a message to both console and file if log_file is provided.
 
     Args:
-        log_file: TextIOWrapper instance or None
-        level: Log level (INFO, ERROR, etc)
+        log_file: TextIOWrapper or Logger instance or None
+        level: Message level (INFO, WARNING, ERROR, DEBUG)
         message: Message to log
         quiet: Whether to suppress console output
     """
     global _last_message
 
-    # Skip empty messages if the previous message was also empty
-    if message == "" and _last_message == "":
-        return
-
-    # Always log to file if log_file is provided
+    # Always log to file if provided
     if log_file:
-        # Add timestamp and level for file logging
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_line = f"{timestamp} - {level} - {message}\n"
-
-        # Add extra newlines for warnings and special messages
-        if level == "WARNING":
-            # Only add newline before if previous message wasn't empty
-            if _last_message != "":
-                log_line = "\n" + log_line
-            log_line = log_line + "\n"
-        elif "Using Tesseract language model:" in message:
-            log_line = "\n" + log_line + "\n"
-        elif "Processing file" in message:
-            log_line = "\n" + log_line
-        elif "Total time for file:" in message:
-            log_line += "\n"
-
-        log_file.write(log_line)
-        log_file.flush()  # Ensure message is written immediately
-
-    # Only print to console if not quiet
-    if not quiet:
-        if level == "ERROR":
-            print(f"\033[91m{message}\033[0m", file=sys.stderr)  # Red text
-        elif level == "WARNING":
-            # Only print newline before if previous message wasn't empty
-            if _last_message != "":
-                print()
-            print(f"\033[93m{message}\033[0m", file=sys.stderr)  # Yellow text
-            print()  # Always print newline after
-        elif level == "DEBUG":
-            print(f"\033[90m{message}\033[0m")  # Gray text
-        elif level == "HEADER":
-            print(f"\033[1m{message}\033[0m")  # Bold text
+        # Check if it's a logger object (has info method) or a file object
+        if hasattr(log_file, "info"):
+            # It's a logger object
+            if level == "ERROR":
+                log_file.error(message)
+            elif level == "WARNING":
+                log_file.warning(message)
+            elif level == "DEBUG":
+                log_file.debug(message)
+            else:
+                log_file.info(message)
         else:
-            print(message)
+            # It's a file object, write with timestamp
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_line = f"{timestamp} - {level} - {message}\n"
+            log_file.write(log_line)
+            log_file.flush()  # Ensure message is written immediately
+
+    # Determine message type
+    is_error = level == "ERROR"
+    is_warning = level == "WARNING"
+    is_version = "PDF2OCR v" in message
+    is_lang_info = "Using Tesseract language model:" in message
+    is_summary = "Processing Summary:" in message
+    is_summary_mode = log_file and "summary" in str(log_file).lower()
+
+    # Determine if message should be shown in console
+    if quiet:
+        # In quiet mode, show ONLY errors
+        should_print = is_error
+    else:
+        # In non-quiet mode:
+        if is_summary_mode:
+            # Summary mode: show version, warnings, errors, language info, and final summary
+            should_print = (
+                is_error or is_warning or is_version or is_lang_info or is_summary
+            )
+        else:
+            # Normal mode: show everything except ebook-convert output
+            should_print = "ebook-convert" not in message
+
+    if should_print:
+        # Add WARNING prefix only for console output
+        console_message = f"WARNING: {message}" if is_warning else message
+
+        # Add a blank line before if this is a new section
+        if _last_message and (is_warning or is_lang_info or is_version or is_summary):
+            print()
+
+        # Print the message with appropriate formatting
+        if is_error:
+            print(f"\033[91m{console_message}\033[0m", file=sys.stderr)  # Red text
+        elif is_warning:
+            print(f"\033[93m{console_message}\033[0m", file=sys.stderr)  # Yellow text
+        elif level == "DEBUG":
+            print(f"\033[90m{console_message}\033[0m")  # Gray text
+        elif level == "HEADER":
+            print(f"\033[1m{console_message}\033[0m")  # Bold text
+        else:
+            print(console_message)
 
     # Store the last message to help control spacing
     _last_message = message
