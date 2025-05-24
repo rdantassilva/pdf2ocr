@@ -139,6 +139,7 @@ def parse_arguments():
 
 def main():
     """Main entry point for the PDF OCR converter."""
+    logger = None  # Initialize logger to None
     try:
         # Register signal handlers
         signal.signal(signal.SIGINT, signal_handler)
