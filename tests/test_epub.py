@@ -1,4 +1,7 @@
+"""Tests for EPUB generation."""
+
 import subprocess
+
 
 def test_epub_generated(tmp_path):
     input_folder = "tests/data/"

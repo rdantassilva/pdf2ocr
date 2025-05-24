@@ -4,4 +4,4 @@ tqdm
 pdf2image
 python-docx
 reportlab
-PyPDF2
+pypdf>=3.15.0
