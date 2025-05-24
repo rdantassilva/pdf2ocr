@@ -276,11 +276,15 @@ def process_single_layout_pdf(
                                 start=batch_start - 1,
                             ):
                                 # Save image to temporary file with high quality for OCR
-                                img_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                                img_path = os.path.join(
+                                    temp_dir, f"page_{page_num}.png"
+                                )
                                 page_img.save(img_path, "PNG")
 
                                 # Generate PDF with OCR using tesseract with configuration
-                                pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
+                                pdf_path_base = os.path.join(
+                                    temp_dir, f"page_{page_num}"
+                                )
                                 tesseract_config = config.get_tesseract_config()
                                 cmd = [
                                     "tesseract",
@@ -407,7 +411,11 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
         )
         if not pdf_files:
             log_message(
-                logger, "WARNING", "No PDF files found!", quiet=config.quiet, summary=config.summary
+                logger,
+                "WARNING",
+                "No PDF files found!",
+                quiet=config.quiet,
+                summary=config.summary,
             )  # Show in summary mode
             return
 
@@ -458,7 +466,9 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
             with futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                 # Submit all files for processing
                 future_to_file = {
-                    executor.submit(process_single_layout_pdf, filename, config): filename
+                    executor.submit(
+                        process_single_layout_pdf, filename, config
+                    ): filename
                     for filename in pdf_files
                 }
 
@@ -562,7 +572,11 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                             failed += 1
                             error_msg = f"Error processing {filename}: {str(e)}"
                             log_message(
-                                logger, "ERROR", error_msg, quiet=config.quiet, summary=config.summary
+                                logger,
+                                "ERROR",
+                                error_msg,
+                                quiet=config.quiet,
+                                summary=config.summary,
                             )  # Show in summary mode
                             errors.append((filename, error_msg))
                             if pbar:
@@ -600,7 +614,11 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 summary.pop(0)
 
             log_message(
-                logger, "INFO", "\n".join(summary), quiet=config.quiet, summary=config.summary
+                logger,
+                "INFO",
+                "\n".join(summary),
+                quiet=config.quiet,
+                summary=config.summary,
             )  # Show in summary mode
 
     except Exception as e:
@@ -956,7 +974,11 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                             failed += 1
                             error_msg = f"Error processing {filename}: {str(e)}"
                             log_message(
-                                logger, "ERROR", error_msg, quiet=config.quiet, summary=config.summary
+                                logger,
+                                "ERROR",
+                                error_msg,
+                                quiet=config.quiet,
+                                summary=config.summary,
                             )  # Show in summary mode
                             errors.append((filename, error_msg))
                             if pbar:

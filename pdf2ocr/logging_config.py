@@ -132,7 +132,12 @@ def close_logging(log_file: Optional[TextIO]) -> None:
 
 
 def log_process_start(
-    log_file: TextIO, filename: str, current: int, total: int, quiet: bool = False, summary: bool = False
+    log_file: TextIO,
+    filename: str,
+    current: int,
+    total: int,
+    quiet: bool = False,
+    summary: bool = False,
 ) -> None:
     """Log the start of processing a file."""
     msg = f"Processing file {current:02d} of {total:02d}: {filename}"
@@ -140,13 +145,29 @@ def log_process_start(
 
 
 def log_conversion_summary(
-    log_file: TextIO, total_files: int, total_time: float, quiet: bool = False, summary: bool = False
+    log_file: TextIO,
+    total_files: int,
+    total_time: float,
+    quiet: bool = False,
+    summary: bool = False,
 ) -> None:
     """Log conversion summary."""
-    log_message(log_file, "HEADER", "=== Conversion Summary ===", quiet=quiet, summary=summary)
-    log_message(log_file, "INFO", f"Total files processed: {total_files}", quiet=quiet, summary=summary)
     log_message(
-        log_file, "INFO", f"Total execution time: {total_time:.2f} seconds", quiet=quiet, summary=summary
+        log_file, "HEADER", "=== Conversion Summary ===", quiet=quiet, summary=summary
+    )
+    log_message(
+        log_file,
+        "INFO",
+        f"Total files processed: {total_files}",
+        quiet=quiet,
+        summary=summary,
+    )
+    log_message(
+        log_file,
+        "INFO",
+        f"Total execution time: {total_time:.2f} seconds",
+        quiet=quiet,
+        summary=summary,
     )
     if total_files > 0:
         avg_time = total_time / total_files
@@ -157,4 +178,3 @@ def log_conversion_summary(
             quiet=quiet,
             summary=summary,
         )
- 

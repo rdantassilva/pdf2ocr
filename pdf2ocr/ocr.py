@@ -300,7 +300,9 @@ def extract_text_from_pdf(
                         start=batch_start - 1,
                     ):
                         # Extract text from image with configuration
-                        text = extract_text_from_image(page_img, lang_code, config_string)
+                        text = extract_text_from_image(
+                            page_img, lang_code, config_string
+                        )
 
                         # Store text directly in pre-allocated list
                         text_pages[page_num] = text
@@ -364,4 +366,3 @@ def validate_tesseract_language(
         if e.stderr:
             error_msg += f"\nError: {e.stderr.strip()}"
         raise RuntimeError(error_msg) from e
- 

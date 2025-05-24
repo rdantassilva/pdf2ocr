@@ -54,7 +54,7 @@ from pdf2ocr.config import ProcessingConfig
 from pdf2ocr.converters import process_layout_pdf_only, process_pdfs_with_ocr
 from pdf2ocr.logging_config import close_logging, log_message, setup_logging
 from pdf2ocr.ocr import LANG_NAMES, validate_tesseract_language
-from pdf2ocr.state import is_shutdown_requested, request_shutdown, force_exit
+from pdf2ocr.state import force_exit, is_shutdown_requested, request_shutdown
 
 
 def signal_handler(signum, frame):
@@ -63,7 +63,7 @@ def signal_handler(signum, frame):
         log_message(None, "WARNING", "\nForce quitting...", quiet=False, summary=False)
         force_exit()
         sys.exit(1)
-    
+
     request_shutdown()
     log_message(
         None,
@@ -168,7 +168,13 @@ def main():
         logger = setup_logging(config.log_path, config.quiet)
 
         # Show version information and language model info
-        log_message(logger, "INFO", f"PDF2OCR v{__version__}", quiet=config.quiet, summary=config.summary)
+        log_message(
+            logger,
+            "INFO",
+            f"PDF2OCR v{__version__}",
+            quiet=config.quiet,
+            summary=config.summary,
+        )
         log_message(
             logger,
             "INFO",
