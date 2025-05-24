@@ -147,6 +147,15 @@ def main():
 
         args = parse_arguments()
 
+        # Validate arguments
+        if args.workers < 1:
+            print("Error: --workers must be at least 1")
+            sys.exit(1)
+        
+        if args.batch_size is not None and args.batch_size < 1:
+            print("Error: --batch-size must be at least 1")
+            sys.exit(1)
+
         # Create processing configuration
         config = ProcessingConfig(
             source_dir=args.source_dir,
@@ -166,6 +175,13 @@ def main():
 
         # Set up logging
         logger = setup_logging(config.log_path, config.quiet)
+
+        # Validate Tesseract language
+        try:
+            validate_tesseract_language(config.lang, logger, config.quiet)
+        except RuntimeError as e:
+            print(f"Error: {e}")
+            sys.exit(1)
 
         # Show version information and language model info
         log_message(

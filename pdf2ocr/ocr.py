@@ -316,6 +316,10 @@ def extract_text_from_pdf(
             if tqdm_file != sys.stderr:
                 tqdm_file.close()
 
+    except FileNotFoundError as e:
+        raise OCRError(f"PDF file not found: {pdf_path}")
+    except PermissionError as e:
+        raise OCRError(f"Permission denied accessing PDF file: {pdf_path}")
     except Exception as e:
         raise OCRError(f"Error during OCR processing: {str(e)}")
 

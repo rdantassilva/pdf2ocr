@@ -6,7 +6,7 @@ import sys
 import time
 from contextlib import contextmanager
 from logging import Logger
-from typing import Optional
+from typing import Generator, List, Optional
 
 from pdf2ocr.logging_config import log_message, setup_logging
 
@@ -18,13 +18,13 @@ class Timer:
         self.start_time = time.perf_counter()
         self.duration = None
 
-    def stop(self):
+    def stop(self) -> float:
         """Stop the timer and return the duration."""
         if self.duration is None:  # Only update if not already stopped
             self.duration = time.perf_counter() - self.start_time
         return self.duration
 
-    def __call__(self):
+    def __call__(self) -> float:
         """Get the current duration without stopping."""
         if self.duration is not None:  # If already stopped, return stored duration
             return self.duration
@@ -50,7 +50,7 @@ def detect_package_manager() -> Optional[str]:
     return None
 
 
-def check_dependencies(generate_epub=False):
+def check_dependencies(generate_epub: bool = False) -> None:
     """Checks if required system dependencies are installed.
 
     Args:
@@ -82,7 +82,7 @@ def check_dependencies(generate_epub=False):
 @contextmanager
 def timing_context(
     operation_name: str, logger: Optional[Logger] = None, log_timing: bool = False
-) -> Timer:
+) -> Generator[Timer, None, None]:
     """Context manager for timing operations.
 
     Args:
