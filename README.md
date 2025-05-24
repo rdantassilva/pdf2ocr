@@ -47,10 +47,10 @@ Process multiple files in parallel with 8 workers:
 pdf2ocr ./pdfs --pdf --html --epub --workers 8 --logfile pdf2ocr.log
 ```
 
-Process large PDFs with custom batch size (memory optimization):
+Enable batch processing for large PDFs to reduce memory usage:
 
 ```bash
-pdf2ocr ./pdfs --pdf --batch-size 5 --logfile pdf2ocr.log
+pdf2ocr ./pdfs --pdf --batch-size 5 --logfile pdf2ocr.log  # Process 5 pages at a time
 ```
 
 > ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
@@ -185,7 +185,7 @@ pdf2ocr -h
 - `--summary`: Display only final conversion summary.
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
 - `--workers`: Number of parallel workers for processing (default: 2).
-- `--batch-size`: Number of pages to process in each batch (default: 10).
+- `--batch-size`: Number of pages to process in each batch (disabled by default). Use this to optimize memory usage for large PDFs.
 - `--version`: show program's version number and exit
 
 ---

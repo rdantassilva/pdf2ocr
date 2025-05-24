@@ -60,7 +60,7 @@ def signal_handler(signum, frame):
     """Handle interrupt signals for graceful shutdown"""
     global shutdown_requested
     if shutdown_requested:  # If CTRL+C is pressed twice, force exit
-        log_message(None, "WARNING", "\nForce quitting...", quiet=False)
+        log_message(None, "WARNING", "\nForce quitting...", quiet=False, summary=False)
         sys.exit(1)
     shutdown_requested = True
     log_message(
@@ -68,6 +68,7 @@ def signal_handler(signum, frame):
         "WARNING",
         "\nShutdown requested. Waiting for current tasks to complete...",
         quiet=False,
+        summary=False,
     )
 
 
@@ -132,8 +133,8 @@ def parse_arguments():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=10,
-        help="Number of pages to process in each batch (default: 10)",
+        default=None,
+        help="Number of pages to process in each batch (disabled by default)",
     )
     parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
@@ -166,12 +167,13 @@ def main():
 
         # Show version information and language model info
         # In quiet mode, these should be suppressed
-        log_message(logger, "INFO", f"PDF2OCR v{__version__}", quiet=config.quiet)
+        log_message(logger, "INFO", f"PDF2OCR v{__version__}", quiet=config.quiet, summary=config.summary)
         log_message(
             logger,
             "INFO",
             f"Using Tesseract language model: {config.lang} ({LANG_NAMES.get(config.lang, 'Unknown')})",
             quiet=config.quiet,
+            summary=config.summary,
         )
 
         # Process PDFs based on layout preservation setting

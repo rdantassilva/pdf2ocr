@@ -30,7 +30,7 @@ class ProcessingConfig:
         summary: Display only final conversion summary
         log_path: Path to log file (optional)
         workers: Number of parallel workers for processing
-        batch_size: Number of pages to process in each batch (default: 10)
+        batch_size: Number of pages to process in each batch (default: None)
     """
 
     source_dir: str
@@ -45,7 +45,7 @@ class ProcessingConfig:
     summary: bool = False
     log_path: Optional[str] = None
     workers: int = 2
-    batch_size: int = 10
+    batch_size: Optional[int] = None
 
     def __post_init__(self):
         # Initialize derived paths
@@ -102,17 +102,7 @@ class ProcessingConfig:
                 "You must select at least one output format: PDF, DOCX, EPUB, or HTML"
             )
 
-        # Enable DOCX automatically if EPUB is requested
-        if self.generate_epub and not self.generate_docx:
-            log_message(
-                logger,
-                "WARNING",
-                "EPUB generation requires DOCX format. Enabling DOCX generation automatically.",
-                quiet=self.quiet,  # Show in summary mode
-            )
-            self.generate_docx = True
-
-        # Warn about preserve-layout limitations and disable other formats
+        # First check preserve-layout mode and disable other formats if needed
         if self.preserve_layout:
             if any([self.generate_docx, self.generate_epub, self.generate_html]):
                 log_message(
@@ -120,6 +110,7 @@ class ProcessingConfig:
                     "WARNING",
                     "Layout preservation mode only supports PDF output. Other formats will be disabled.",
                     quiet=self.quiet,  # Show in summary mode
+                    summary=self.summary,
                 )
                 self.generate_docx = False
                 self.generate_epub = False
@@ -132,7 +123,18 @@ class ProcessingConfig:
                     "PDF output automatically enabled for layout preservation mode.",
                     quiet=self.quiet
                     or self.summary,  # Hide in both quiet and summary modes
+                    summary=self.summary,
                 )
+        # Only check EPUB/DOCX dependency if not in preserve-layout mode
+        elif self.generate_epub and not self.generate_docx:
+            log_message(
+                logger,
+                "WARNING",
+                "EPUB generation requires DOCX format. Enabling DOCX generation automatically.",
+                quiet=self.quiet,  # Show in summary mode
+                summary=self.summary,
+            )
+            self.generate_docx = True
 
         # Skip directory validation in test environment
         if not self.source_dir.startswith("/test/") and not os.path.isdir(

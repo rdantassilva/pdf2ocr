@@ -192,40 +192,24 @@ def process_single_layout_pdf(
                 )
 
                 try:
-                    # Process pages in batches
-                    for batch_start in tqdm(
-                        range(1, total_pages + 1, config.batch_size),
-                        desc="Processing batches",
-                        unit="batch",
-                        file=tqdm_file,
-                        disable=config.quiet or config.summary,
-                        leave=False,
-                    ):
-                        batch_end = min(
-                            batch_start + config.batch_size - 1, total_pages
-                        )
-
-                        # Convert batch of pages to images
+                    if config.batch_size is None:
+                        # Process all pages at once
                         pages_batch = convert_from_path(
                             pdf_path,
                             dpi=200,
-                            first_page=batch_start,
-                            last_page=batch_end,
                             use_pdftocairo=True,
                         )
 
-                        # Process each page in the batch
+                        # Process each page
                         for page_num, page_img in enumerate(
                             tqdm(
                                 pages_batch,
-                                desc=f"Pages {batch_start}-{batch_end}",
+                                desc="Processing pages",
                                 unit="page",
                                 file=tqdm_file,
                                 disable=config.quiet or config.summary,
                                 leave=False,
-                                position=1,
-                            ),
-                            start=batch_start - 1,
+                            )
                         ):
                             # Save image to temporary file with high quality for OCR
                             img_path = os.path.join(temp_dir, f"page_{page_num}.png")
@@ -254,6 +238,69 @@ def process_single_layout_pdf(
 
                         # Explicitly free memory
                         del pages_batch
+                    else:
+                        # Process pages in batches
+                        for batch_start in tqdm(
+                            range(1, total_pages + 1, config.batch_size),
+                            desc="Processing batches",
+                            unit="batch",
+                            file=tqdm_file,
+                            disable=config.quiet or config.summary,
+                            leave=False,
+                        ):
+                            batch_end = min(
+                                batch_start + config.batch_size - 1, total_pages
+                            )
+
+                            # Convert batch of pages to images
+                            pages_batch = convert_from_path(
+                                pdf_path,
+                                dpi=200,
+                                first_page=batch_start,
+                                last_page=batch_end,
+                                use_pdftocairo=True,
+                            )
+
+                            # Process each page in the batch
+                            for page_num, page_img in enumerate(
+                                tqdm(
+                                    pages_batch,
+                                    desc=f"Pages {batch_start}-{batch_end}",
+                                    unit="page",
+                                    file=tqdm_file,
+                                    disable=config.quiet or config.summary,
+                                    leave=False,
+                                    position=1,
+                                ),
+                                start=batch_start - 1,
+                            ):
+                                # Save image to temporary file with high quality for OCR
+                                img_path = os.path.join(temp_dir, f"page_{page_num}.png")
+                                page_img.save(img_path, "PNG")
+
+                                # Generate PDF with OCR using tesseract
+                                pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
+                                cmd = [
+                                    "tesseract",
+                                    img_path,
+                                    pdf_path_base,
+                                    "-l",
+                                    config.lang,
+                                    "--dpi",
+                                    "200",
+                                    "pdf",
+                                ]
+                                subprocess.run(cmd, check=True, capture_output=True)
+
+                                # Read generated PDF
+                                with open(f"{pdf_path_base}.pdf", "rb") as f:
+                                    # Ensure we have enough slots in pdf_pages
+                                    while len(pdf_pages) <= page_num:
+                                        pdf_pages.append(None)
+                                    pdf_pages[page_num] = f.read()
+
+                            # Explicitly free memory
+                            del pages_batch
 
                 finally:
                     # Close tqdm file if it was opened
@@ -324,37 +371,33 @@ def process_single_layout_pdf(
 def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
     """Generate searchable PDFs while preserving the original document layout.
 
-    This function creates a searchable PDF that maintains the exact visual appearance
-    of the original document. It's ideal for documents where layout and formatting
-    are crucial (e.g., forms, scientific papers, magazines).
+    This function processes each PDF file in the source directory and generates
+    a searchable PDF that maintains the exact visual appearance of the original.
 
     Key features:
-    - Preserves original document layout, fonts, and formatting
+    - Maintains original document layout and formatting
     - Adds invisible OCR text layer for searchability
     - Uses lower DPI (200) to optimize file size
-    - Creates output in 'pdf_ocr_layout' directory
+    - Output in 'pdf_ocr_layout' directory
+
+    Args:
+        config: Processing configuration
+        logger: Logger instance
     """
     try:
-        # Show warning about layout preservation mode
-        log_message(
-            logger,
-            "WARNING",
-            "Layout preservation mode only supports PDF output. Other formats will be disabled.",
-            quiet=config.quiet,  # Suppress in quiet mode
-        )
+        # Validate configuration
+        config.validate(logger)
 
         # Create output directory
         os.makedirs(config.pdf_dir, exist_ok=True)
         log_message(
             logger,
             "DEBUG",
-            f"Preserve-layout PDF folder created - {config.pdf_dir}",
+            f"PDF folder created - {config.pdf_dir}",
             quiet=config.quiet
             or config.summary,  # Hide in both quiet and summary modes
+            summary=config.summary,
         )
-        log_message(
-            logger, "DEBUG", "", quiet=config.quiet or config.summary
-        )  # Add empty line after directory creation
 
         # Get list of PDF files
         pdf_files = sorted(
@@ -362,8 +405,8 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
         )
         if not pdf_files:
             log_message(
-                logger, "WARNING", "No PDF files found!", quiet=config.quiet
-            )  # Suppress in quiet mode
+                logger, "WARNING", "No PDF files found!", quiet=config.quiet, summary=config.summary
+            )  # Show in summary mode
             return
 
         # Process files in parallel
@@ -376,6 +419,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 "",
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
+                summary=config.summary,
             )
             log_message(
                 logger,
@@ -383,20 +427,24 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 f"Processing {len(pdf_files)} files using {max_workers} workers",
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
+                summary=config.summary,
             )
-            log_message(
-                logger,
-                "INFO",
-                f"Batch-size: {config.batch_size} pages",
-                quiet=config.quiet
-                or config.summary,  # Hide in both quiet and summary modes
-            )
+            if config.batch_size is not None:
+                log_message(
+                    logger,
+                    "INFO",
+                    f"Batch-size: {config.batch_size} pages",
+                    quiet=config.quiet
+                    or config.summary,  # Hide in both quiet and summary modes
+                    summary=config.summary,
+                )
             log_message(
                 logger,
                 "INFO",
                 "",
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
+                summary=config.summary,
             )
 
             # Track processing statistics
@@ -408,9 +456,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
             with futures.ProcessPoolExecutor(max_workers=max_workers) as executor:
                 # Submit all files for processing
                 future_to_file = {
-                    executor.submit(
-                        process_single_layout_pdf, filename, config
-                    ): filename
+                    executor.submit(process_single_layout_pdf, filename, config): filename
                     for filename in pdf_files
                 }
 
@@ -447,6 +493,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                                 "WARNING",
                                 "Shutdown requested. Waiting for current tasks to complete...",
                                 quiet=config.quiet,  # Show in summary mode
+                                summary=config.summary,
                             )
                             break
 
@@ -469,6 +516,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                                 f"[{completed}/{len(pdf_files)}] Processing: {filename}",
                                 quiet=config.quiet
                                 or config.summary,  # Hide in both quiet and summary modes
+                                summary=config.summary,
                             )
 
                             # Write all log messages from the child process
@@ -479,6 +527,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                                     message,
                                     quiet=config.quiet
                                     or config.summary,  # Hide in both quiet and summary modes
+                                    summary=config.summary,
                                 )
 
                             if success:
@@ -489,6 +538,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                                     f"  ✓ Completed successfully in {processing_time:.2f} seconds\n",
                                     quiet=config.quiet
                                     or config.summary,  # Hide in both quiet and summary modes
+                                    summary=config.summary,
                                 )
                             else:
                                 failed += 1
@@ -499,6 +549,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                                         "ERROR",
                                         f"  ✗ Failed: {error}\n",
                                         quiet=config.quiet,  # Show in summary mode
+                                        summary=config.summary,
                                     )
 
                             # Update progress bar if it exists
@@ -509,7 +560,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                             failed += 1
                             error_msg = f"Error processing {filename}: {str(e)}"
                             log_message(
-                                logger, "ERROR", error_msg, quiet=config.quiet
+                                logger, "ERROR", error_msg, quiet=config.quiet, summary=config.summary
                             )  # Show in summary mode
                             errors.append((filename, error_msg))
                             if pbar:
@@ -547,15 +598,16 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 summary.pop(0)
 
             log_message(
-                logger, "INFO", "\n".join(summary), quiet=config.quiet
+                logger, "INFO", "\n".join(summary), quiet=config.quiet, summary=config.summary
             )  # Show in summary mode
 
     except Exception as e:
         log_message(
             logger,
             "ERROR",
-            f"Error processing layout PDF: {str(e)}",
-            quiet=False,  # Always show errors
+            f"Error processing PDFs: {str(e)}",
+            quiet=config.quiet,  # Show in summary mode
+            summary=config.summary,
         )
         raise
 
@@ -773,13 +825,14 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
             )
-            log_message(
-                logger,
-                "INFO",
-                f"Batch-size: {config.batch_size} pages",
-                quiet=config.quiet
-                or config.summary,  # Hide in both quiet and summary modes
-            )
+            if config.batch_size is not None:
+                log_message(
+                    logger,
+                    "INFO",
+                    f"Batch-size: {config.batch_size} pages",
+                    quiet=config.quiet
+                    or config.summary,  # Hide in both quiet and summary modes
+                )
             log_message(
                 logger,
                 "INFO",

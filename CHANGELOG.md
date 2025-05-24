@@ -7,13 +7,14 @@ All notable changes to this project will be documented in this file.
 ## [v1.0.18 - 2025-05-23]
 
 ### ✨ Added
-- `--batch-size` option to control number of pages processed in each batch (default: 10).
+- `--batch-size` option to control number of pages processed in each batch (disabled by default).
 - Improved memory management by processing PDF pages in configurable batches.
 
 ### 🛠 Changed
 - Fixed total processing time calculation to accurately reflect all operations.
 - Improved log message formatting for better readability.
 - Enhanced progress reporting with batch size information.
+- Changed batch processing to be disabled by default for better compatibility with most PDFs.
 
 ## [v1.0.17 - 2025-05-22]
 

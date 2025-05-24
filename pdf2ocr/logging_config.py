@@ -40,7 +40,9 @@ def setup_logging(
     return log_file
 
 
-def log_message(log_file, level: str, message: str, quiet: bool = False) -> None:
+def log_message(
+    log_file, level: str, message: str, quiet: bool = False, summary: bool = False
+) -> None:
     """Log a message to both console and file if log_file is provided.
 
     Args:
@@ -48,6 +50,7 @@ def log_message(log_file, level: str, message: str, quiet: bool = False) -> None
         level: Message level (INFO, WARNING, ERROR, DEBUG)
         message: Message to log
         quiet: Whether to suppress console output
+        summary: Whether to show only summary information
     """
     global _last_message
 
@@ -77,7 +80,6 @@ def log_message(log_file, level: str, message: str, quiet: bool = False) -> None
     is_version = "PDF2OCR v" in message
     is_lang_info = "Using Tesseract language model:" in message
     is_summary = "Processing Summary:" in message
-    is_summary_mode = log_file and "summary" in str(log_file).lower()
 
     # Determine if message should be shown in console
     if quiet:
@@ -85,7 +87,7 @@ def log_message(log_file, level: str, message: str, quiet: bool = False) -> None
         should_print = is_error
     else:
         # In non-quiet mode:
-        if is_summary_mode:
+        if summary:
             # Summary mode: show version, warnings, errors, language info, and final summary
             should_print = (
                 is_error or is_warning or is_version or is_lang_info or is_summary
@@ -130,21 +132,21 @@ def close_logging(log_file: Optional[TextIO]) -> None:
 
 
 def log_process_start(
-    log_file: TextIO, filename: str, current: int, total: int, quiet: bool = False
+    log_file: TextIO, filename: str, current: int, total: int, quiet: bool = False, summary: bool = False
 ) -> None:
     """Log the start of processing a file."""
     msg = f"Processing file {current:02d} of {total:02d}: {filename}"
-    log_message(log_file, "INFO", msg, quiet=quiet)
+    log_message(log_file, "INFO", msg, quiet=quiet, summary=summary)
 
 
 def log_conversion_summary(
-    log_file: TextIO, total_files: int, total_time: float, quiet: bool = False
+    log_file: TextIO, total_files: int, total_time: float, quiet: bool = False, summary: bool = False
 ) -> None:
     """Log conversion summary."""
-    log_message(log_file, "HEADER", "=== Conversion Summary ===", quiet=quiet)
-    log_message(log_file, "INFO", f"Total files processed: {total_files}", quiet=quiet)
+    log_message(log_file, "HEADER", "=== Conversion Summary ===", quiet=quiet, summary=summary)
+    log_message(log_file, "INFO", f"Total files processed: {total_files}", quiet=quiet, summary=summary)
     log_message(
-        log_file, "INFO", f"Total execution time: {total_time:.2f} seconds", quiet=quiet
+        log_file, "INFO", f"Total execution time: {total_time:.2f} seconds", quiet=quiet, summary=summary
     )
     if total_files > 0:
         avg_time = total_time / total_files
@@ -153,4 +155,5 @@ def log_conversion_summary(
             "INFO",
             f"Average time per file: {avg_time:.2f} seconds",
             quiet=quiet,
+            summary=summary,
         )
