@@ -68,18 +68,19 @@ class ProcessingConfig:
         """
         return self._effective_dest_dir
 
-    def get_tesseract_config(self) -> str:
+    def get_tesseract_config(self) -> List[str]:
         """Get the appropriate Tesseract configuration based on layout preservation setting.
 
         Returns:
-            str: Tesseract configuration string
+            List[str]: Tesseract configuration options as a list
         """
         base_config = (
             TESSERACT_LAYOUT_CONFIG
             if self.preserve_layout
             else TESSERACT_DEFAULT_CONFIG
         )
-        return f"{base_config} -l {self.lang}"
+        # Split the config string into individual arguments
+        return base_config.split()
 
     def validate(self, logger=None) -> None:
         """Validate the configuration settings.
@@ -141,3 +142,4 @@ class ProcessingConfig:
             self.source_dir
         ):
             raise ValueError(f"Source directory not found: {self.source_dir}")
+ 

@@ -114,12 +114,13 @@ def convert_image_to_pdf(image: Image.Image) -> PdfReader:
             os.unlink(temp_file.name)
 
 
-def extract_text_from_image(image: Image.Image, lang: str) -> str:
+def extract_text_from_image(image: Image.Image, lang: str, config: str = "") -> str:
     """Extract text from an image using OCR.
 
     Args:
         image: PIL Image to process
         lang: Language code for OCR
+        config: Tesseract configuration string
 
     Returns:
         str: Extracted text
@@ -127,8 +128,8 @@ def extract_text_from_image(image: Image.Image, lang: str) -> str:
     # Preprocess image for better OCR results
     image = preprocess_image(image)
 
-    # Extract text using tesseract
-    text = image_to_string(image, lang=lang)
+    # Extract text using tesseract with configuration
+    text = image_to_string(image, lang=lang, config=config)
 
     # Clean text if Portuguese
     if lang.lower() == "por":
@@ -143,6 +144,7 @@ def process_pdf_with_ocr(
     logger: logging.Logger,
     quiet: bool = False,
     summary: bool = False,
+    config: str = "",
 ) -> list:
     """Process PDF file with OCR.
 
@@ -152,6 +154,7 @@ def process_pdf_with_ocr(
         logger: Logger instance
         quiet: Whether to suppress progress output
         summary: Whether to show only summary output
+        config: Tesseract configuration string
 
     Returns:
         list: List of tuples (page_number, text)
@@ -177,7 +180,7 @@ def process_pdf_with_ocr(
                     leave=False,
                 )
             ):  # Disable progress bar in both quiet and summary modes
-                text = extract_text_from_image(image, lang)
+                text = extract_text_from_image(image, lang, config)
                 pages.append((i + 1, text))
 
         finally:
@@ -218,6 +221,9 @@ def extract_text_from_pdf(
     start_time = time.time()
     final_text = []
 
+    # Convert list config to string
+    config_string = " ".join(tesseract_config) if tesseract_config else ""
+
     try:
         # Get total number of pages
         with open(pdf_path, "rb") as f:
@@ -250,8 +256,8 @@ def extract_text_from_pdf(
                         leave=False,
                     )
                 ):
-                    # Extract text from image
-                    text = extract_text_from_image(page_img, lang_code)
+                    # Extract text from image with configuration
+                    text = extract_text_from_image(page_img, lang_code, config_string)
 
                     # Store text directly in pre-allocated list
                     text_pages[page_num] = text
@@ -293,8 +299,8 @@ def extract_text_from_pdf(
                         ),
                         start=batch_start - 1,
                     ):
-                        # Extract text from image
-                        text = extract_text_from_image(page_img, lang_code)
+                        # Extract text from image with configuration
+                        text = extract_text_from_image(page_img, lang_code, config_string)
 
                         # Store text directly in pre-allocated list
                         text_pages[page_num] = text
@@ -358,3 +364,4 @@ def validate_tesseract_language(
         if e.stderr:
             error_msg += f"\nError: {e.stderr.strip()}"
         raise RuntimeError(error_msg) from e
+ 

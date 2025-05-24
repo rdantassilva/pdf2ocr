@@ -215,8 +215,9 @@ def process_single_layout_pdf(
                             img_path = os.path.join(temp_dir, f"page_{page_num}.png")
                             page_img.save(img_path, "PNG")
 
-                            # Generate PDF with OCR using tesseract
+                            # Generate PDF with OCR using tesseract with configuration
                             pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
+                            tesseract_config = config.get_tesseract_config()
                             cmd = [
                                 "tesseract",
                                 img_path,
@@ -226,7 +227,7 @@ def process_single_layout_pdf(
                                 "--dpi",
                                 "200",
                                 "pdf",
-                            ]
+                            ] + tesseract_config
                             subprocess.run(cmd, check=True, capture_output=True)
 
                             # Read generated PDF
@@ -278,8 +279,9 @@ def process_single_layout_pdf(
                                 img_path = os.path.join(temp_dir, f"page_{page_num}.png")
                                 page_img.save(img_path, "PNG")
 
-                                # Generate PDF with OCR using tesseract
+                                # Generate PDF with OCR using tesseract with configuration
                                 pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
+                                tesseract_config = config.get_tesseract_config()
                                 cmd = [
                                     "tesseract",
                                     img_path,
@@ -289,7 +291,7 @@ def process_single_layout_pdf(
                                     "--dpi",
                                     "200",
                                     "pdf",
-                                ]
+                                ] + tesseract_config
                                 subprocess.run(cmd, check=True, capture_output=True)
 
                                 # Read generated PDF

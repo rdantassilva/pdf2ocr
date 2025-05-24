@@ -60,7 +60,7 @@ def test_tesseract_config_default():
         lang="eng"
     )
     
-    expected = f"{TESSERACT_DEFAULT_CONFIG} -l eng"
+    expected = TESSERACT_DEFAULT_CONFIG.split()
     assert config.get_tesseract_config() == expected
 
 def test_tesseract_config_layout():
@@ -72,5 +72,5 @@ def test_tesseract_config_layout():
         lang="eng"
     )
     
-    expected = f"{TESSERACT_LAYOUT_CONFIG} -l eng"
+    expected = TESSERACT_LAYOUT_CONFIG.split()
     assert config.get_tesseract_config() == expected 
