@@ -24,7 +24,7 @@ from pdf2ocr.converters.html import save_as_html
 from pdf2ocr.logging_config import (log_conversion_summary, log_message,
                                     log_process_start, setup_logging)
 from pdf2ocr.ocr import extract_text_from_pdf
-from pdf2ocr.state import shutdown_requested
+from pdf2ocr.state import is_shutdown_requested
 from pdf2ocr.utils import timing_context
 
 
@@ -487,7 +487,7 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 try:
                     # Process results as they complete
                     for future in futures.as_completed(future_to_file):
-                        if shutdown_requested:
+                        if is_shutdown_requested():
                             log_message(
                                 logger,
                                 "WARNING",
@@ -881,12 +881,13 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                 try:
                     # Process results as they complete
                     for future in futures.as_completed(future_to_file):
-                        if shutdown_requested:
+                        if is_shutdown_requested():
                             log_message(
                                 logger,
                                 "WARNING",
                                 "Shutdown requested. Waiting for current tasks to complete...",
                                 quiet=config.quiet,  # Show in summary mode
+                                summary=config.summary,
                             )
                             break
 
@@ -909,6 +910,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                                 f"[{completed}/{len(pdf_files)}] Processing: {filename}",
                                 quiet=config.quiet
                                 or config.summary,  # Hide in both quiet and summary modes
+                                summary=config.summary,
                             )
 
                             # Write all log messages from the child process
@@ -919,6 +921,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                                     message,
                                     quiet=config.quiet
                                     or config.summary,  # Hide in both quiet and summary modes
+                                    summary=config.summary,
                                 )
 
                             if success:
@@ -929,6 +932,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                                     f"  ✓ Completed successfully in {processing_time:.2f} seconds\n",
                                     quiet=config.quiet
                                     or config.summary,  # Hide in both quiet and summary modes
+                                    summary=config.summary,
                                 )
                             else:
                                 failed += 1
@@ -939,6 +943,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                                         "ERROR",
                                         f"  ✗ Failed: {error}\n",
                                         quiet=config.quiet,  # Show in summary mode
+                                        summary=config.summary,
                                     )
 
                             # Update progress bar if it exists
@@ -949,7 +954,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                             failed += 1
                             error_msg = f"Error processing {filename}: {str(e)}"
                             log_message(
-                                logger, "ERROR", error_msg, quiet=config.quiet
+                                logger, "ERROR", error_msg, quiet=config.quiet, summary=config.summary
                             )  # Show in summary mode
                             errors.append((filename, error_msg))
                             if pbar:

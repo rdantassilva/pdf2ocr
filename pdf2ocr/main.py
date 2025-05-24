@@ -54,15 +54,17 @@ from pdf2ocr.config import ProcessingConfig
 from pdf2ocr.converters import process_layout_pdf_only, process_pdfs_with_ocr
 from pdf2ocr.logging_config import close_logging, log_message, setup_logging
 from pdf2ocr.ocr import LANG_NAMES, validate_tesseract_language
+from pdf2ocr.state import is_shutdown_requested, request_shutdown, force_exit
 
 
 def signal_handler(signum, frame):
     """Handle interrupt signals for graceful shutdown"""
-    global shutdown_requested
-    if shutdown_requested:  # If CTRL+C is pressed twice, force exit
+    if is_shutdown_requested():  # If CTRL+C is pressed twice
         log_message(None, "WARNING", "\nForce quitting...", quiet=False, summary=False)
+        force_exit()
         sys.exit(1)
-    shutdown_requested = True
+    
+    request_shutdown()
     log_message(
         None,
         "WARNING",
@@ -70,11 +72,6 @@ def signal_handler(signum, frame):
         quiet=False,
         summary=False,
     )
-
-
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
 
 
 def parse_arguments():
@@ -143,6 +140,10 @@ def parse_arguments():
 def main():
     """Main entry point for the PDF OCR converter."""
     try:
+        # Register signal handlers
+        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGTERM, signal_handler)
+
         args = parse_arguments()
 
         # Create processing configuration
@@ -166,7 +167,6 @@ def main():
         logger = setup_logging(config.log_path, config.quiet)
 
         # Show version information and language model info
-        # In quiet mode, these should be suppressed
         log_message(logger, "INFO", f"PDF2OCR v{__version__}", quiet=config.quiet, summary=config.summary)
         log_message(
             logger,
@@ -183,12 +183,15 @@ def main():
             process_pdfs_with_ocr(config, logger)
 
     except KeyboardInterrupt:
-        print("\nOperation cancelled by user")
+        if not is_shutdown_requested():
+            print("\nOperation cancelled by user")
         sys.exit(1)
     except Exception as e:
         print(f"Error processing PDFs: {str(e)}")
-        print(str(e))
         sys.exit(1)
+    finally:
+        if logger:
+            close_logging(logger)
 
 
 if __name__ == "__main__":
