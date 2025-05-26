@@ -133,6 +133,12 @@ def parse_arguments():
         default=None,
         help="Number of pages to process in each batch (disabled by default)",
     )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=400,
+        help="DPI for PDF to image conversion (default: 400). Higher values improve OCR quality but increase processing time.",
+    )
     parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
 
@@ -155,6 +161,10 @@ def main():
         if args.batch_size is not None and args.batch_size < 1:
             print("Error: --batch-size must be at least 1")
             sys.exit(1)
+        
+        if args.dpi < 72 or args.dpi > 1200:
+            print("Error: --dpi must be between 72 and 1200")
+            sys.exit(1)
 
         # Create processing configuration
         config = ProcessingConfig(
@@ -171,6 +181,7 @@ def main():
             log_path=args.logfile,
             workers=args.workers,
             batch_size=args.batch_size,
+            dpi=args.dpi,
         )
 
         # Set up logging

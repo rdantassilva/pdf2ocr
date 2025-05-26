@@ -31,6 +31,7 @@ class ProcessingConfig:
         log_path: Path to log file (optional)
         workers: Number of parallel workers for processing
         batch_size: Number of pages to process in each batch (default: None)
+        dpi: DPI for PDF to image conversion (default: 400)
     """
 
     source_dir: str
@@ -46,6 +47,7 @@ class ProcessingConfig:
     log_path: Optional[str] = None
     workers: int = 2
     batch_size: Optional[int] = None
+    dpi: int = 400
 
     def __post_init__(self):
         # Initialize derived paths

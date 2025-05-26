@@ -196,7 +196,7 @@ def process_single_layout_pdf(
                         # Process all pages at once
                         pages_batch = convert_from_path(
                             pdf_path,
-                            dpi=400,
+                            dpi=config.dpi,
                             use_pdftocairo=True,
                         )
 
@@ -228,7 +228,7 @@ def process_single_layout_pdf(
                                 "-l",
                                 config.lang,
                                 "--dpi",
-                                "400",
+                                str(config.dpi),
                                 "pdf",
                             ] + tesseract_config
                             subprocess.run(cmd, check=True, capture_output=True)
@@ -259,7 +259,7 @@ def process_single_layout_pdf(
                             # Convert batch of pages to images
                             pages_batch = convert_from_path(
                                 pdf_path,
-                                dpi=400,
+                                dpi=config.dpi,
                                 first_page=batch_start,
                                 last_page=batch_end,
                                 use_pdftocairo=True,
@@ -299,7 +299,7 @@ def process_single_layout_pdf(
                                     "-l",
                                     config.lang,
                                     "--dpi",
-                                    "400",
+                                    str(config.dpi),
                                     "pdf",
                                 ] + tesseract_config
                                 subprocess.run(cmd, check=True, capture_output=True)
@@ -342,7 +342,7 @@ def process_single_layout_pdf(
 
             total_time += get_merge_time.duration
 
-            # Compress the final PDF using Ghostscript
+            # Compress the final PDF using Ghostscript with enhanced compression
             with timing_context("PDF compression", None) as get_compress_time:
                 cmd = [
                     "gs",
@@ -352,6 +352,19 @@ def process_single_layout_pdf(
                     "-dNOPAUSE",
                     "-dQUIET",
                     "-dBATCH",
+                    "-dCompressFonts=true",  # Compress fonts
+                    "-dSubsetFonts=true",    # Subset fonts to reduce size
+                    "-dCompressPages=true",  # Compress page content
+                    "-dUseFlateCompression=true",  # Use Flate compression
+                    "-dOptimize=true",       # Enable PDF optimization
+                    "-dEmbedAllFonts=true",  # Embed fonts for consistency
+                    "-dAutoRotatePages=/None",  # Prevent unwanted rotation
+                    "-dColorImageDownsampleType=/Bicubic",  # Better downsampling
+                    "-dColorImageResolution=150",  # Reduce image resolution for smaller size
+                    "-dGrayImageDownsampleType=/Bicubic",
+                    "-dGrayImageResolution=150",
+                    "-dMonoImageDownsampleType=/Bicubic", 
+                    "-dMonoImageResolution=300",  # Keep text sharp
                     f"-sOutputFile={out_path}",
                     temp_pdf_path,
                 ]
@@ -440,6 +453,14 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
                 logger,
                 "INFO",
                 f"Processing {len(pdf_files)} files using {max_workers} workers",
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
+                summary=config.summary,
+            )
+            log_message(
+                logger,
+                "INFO",
+                f"DPI: {config.dpi}",
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
                 summary=config.summary,
@@ -669,6 +690,7 @@ def process_single_pdf(
                 quiet=config.quiet,
                 summary=config.summary,
                 batch_size=config.batch_size,
+                dpi=config.dpi,
             )
         total_time += get_text_time.duration
         log_messages.append(
@@ -847,6 +869,13 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                 logger,
                 "INFO",
                 f"Processing {len(pdf_files)} files using {max_workers} workers",
+                quiet=config.quiet
+                or config.summary,  # Hide in both quiet and summary modes
+            )
+            log_message(
+                logger,
+                "INFO",
+                f"DPI: {config.dpi}",
                 quiet=config.quiet
                 or config.summary,  # Hide in both quiet and summary modes
             )

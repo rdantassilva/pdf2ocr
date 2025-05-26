@@ -145,6 +145,7 @@ def process_pdf_with_ocr(
     quiet: bool = False,
     summary: bool = False,
     config: str = "",
+    dpi: int = 400,
 ) -> list:
     """Process PDF file with OCR.
 
@@ -155,6 +156,7 @@ def process_pdf_with_ocr(
         quiet: Whether to suppress progress output
         summary: Whether to show only summary output
         config: Tesseract configuration string
+        dpi: DPI for PDF to image conversion (default: 400)
 
     Returns:
         list: List of tuples (page_number, text)
@@ -163,7 +165,7 @@ def process_pdf_with_ocr(
 
     try:
         # Convert PDF to images
-        images = convert_from_path(pdf_path, dpi=400, use_pdftocairo=True)
+        images = convert_from_path(pdf_path, dpi=dpi, use_pdftocairo=True)
 
         # Configure tqdm to write to /dev/null in quiet mode
         tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
@@ -204,6 +206,7 @@ def extract_text_from_pdf(
     quiet: bool = False,
     summary: bool = False,
     batch_size: Optional[int] = None,
+    dpi: int = 400,
 ) -> Tuple[str, List[str], float]:
     """Extract text from PDF using OCR.
 
@@ -214,6 +217,7 @@ def extract_text_from_pdf(
         quiet: Whether to suppress progress output
         summary: Whether to show only summary output
         batch_size: Number of pages to process in each batch (disabled by default)
+        dpi: DPI for PDF to image conversion (default: 400)
 
     Returns:
         tuple: (combined text, list of page texts, processing time)
@@ -241,7 +245,7 @@ def extract_text_from_pdf(
                 # Process all pages at once
                 pages_batch = convert_from_path(
                     pdf_path,
-                    dpi=400,
+                    dpi=dpi,
                     use_pdftocairo=True,
                 )
 
@@ -280,7 +284,7 @@ def extract_text_from_pdf(
                     # Convert batch of pages to images
                     pages_batch = convert_from_path(
                         pdf_path,
-                        dpi=400,
+                        dpi=dpi,
                         first_page=batch_start,
                         last_page=batch_end,
                         use_pdftocairo=True,
