@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file.
   - Text-specific sharpening to improve character definition
   - Conservative contrast boosting for enhanced readability
   - Unsharp masking for fine-tuned text edge enhancement
+- **`--dpi` Configuration Option** to control PDF to image conversion quality (default: 400, range: 72-1200)
 - **Robust Error Handling** with automatic fallbacks to ensure processing never fails
 - **Optional Advanced Dependencies** (scipy, scikit-image) with graceful degradation when unavailable
 - **Unified Processing** - all output formats now benefit from advanced image enhancements
@@ -22,9 +23,11 @@ All notable changes to this project will be documented in this file.
 ### 🛠 Changed
 - **Enhanced OCR Quality** across all modes (standard and layout-preserving)
 - **Improved Text Recognition** especially for poor quality scans, faded text, and noisy documents
+- **Configurable Image Resolution** with `--dpi` parameter for quality vs. performance trade-offs
 - **Optimized Processing Pipeline** with intelligent edge preservation during noise reduction
 - **Better Memory Management** with validation checks to prevent image corruption
 - **Updated Dependencies** to include numpy, scipy, and scikit-image for advanced image processing
+- **Unified DPI Configuration** across all processing modes and Tesseract operations
 
 ### 🐛 Fixed
 - **Image Processing Stability** with comprehensive error handling and fallback mechanisms

@@ -39,6 +39,15 @@ A CLI tool to apply OCR on PDF files and export to multiple formats.
 - ✅ **Enhanced performance** on documents with noise or artifacts
 - ✅ **Automatic fallbacks** ensure processing never fails
 - ✅ **Works with all output formats** (PDF, DOCX, HTML, EPUB)
+- ✅ **Configurable quality** with `--dpi` option (72-1200 range)
+
+### ⚙️ Quality Control:
+
+The `--dpi` parameter controls the resolution of PDF to image conversion:
+
+- **Low DPI (72-150)**: Faster processing, smaller memory usage, suitable for clean documents
+- **Medium DPI (200-400)**: Balanced quality and performance (default: 400)
+- **High DPI (500-1200)**: Maximum quality for challenging documents, slower processing
 
 > 💡 **Note:** All image enhancements are applied automatically - no configuration needed!
 
@@ -84,6 +93,12 @@ High-quality OCR with custom DPI for challenging documents:
 
 ```bash
 pdf2ocr ./pdfs --pdf --dpi 600 --logfile pdf2ocr.log  # Higher DPI for better quality
+```
+
+Fast processing for clean documents with lower DPI:
+
+```bash
+pdf2ocr ./pdfs --pdf --dpi 150 --logfile pdf2ocr.log  # Lower DPI for faster processing
 ```
 
 > ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
@@ -236,7 +251,7 @@ pdf2ocr -h
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
 - `--workers`: Number of parallel workers for processing (default: 2).
 - `--batch-size`: Number of pages to process in each batch (disabled by default). Use this to optimize memory usage for large PDFs.
-- `--dpi`: DPI for PDF to image conversion (default: 400). Higher values improve OCR quality but increase processing time.
+- `--dpi`: DPI for PDF to image conversion (default: 400, range: 72-1200). Higher values improve OCR quality but increase processing time and memory usage.
 - `--version`: show program's version number and exit
 
 ---
