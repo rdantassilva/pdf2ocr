@@ -9,11 +9,38 @@ A CLI tool to apply OCR on PDF files and export to multiple formats.
 
 ## 📄 Features
 
-- 🔍 Extracts text from scanned PDFs using Tesseract OCR
+- 🔍 Extracts text from scanned PDFs using Tesseract OCR with advanced image preprocessing
 - 📘 Outputs DOCX, HTML, EPUB and searchable PDF files with preserved paragraph structure
 - 📚 Converts DOCX to EPUB via Calibre, including metadata
 - 📈 Displays progress bars and detailed summary logs
 - 📂 Supports layout-preserving mode for high-fidelity PDF OCR
+- 🖼️ Advanced image enhancement for improved OCR accuracy on distorted documents
+- ⚡ Intelligent preprocessing with noise reduction, contrast optimization, and text sharpening
+
+---
+
+## 🖼️ Advanced Image Processing
+
+`pdf2ocr` includes sophisticated image preprocessing to maximize OCR accuracy, especially for documents with distortions, poor contrast, or noise:
+
+### 🔧 Automatic Enhancements Applied:
+
+1. **Grayscale Conversion** - Optimizes images for text recognition
+2. **Auto Contrast** - Automatically adjusts contrast for better text visibility  
+3. **Noise Reduction** - Removes artifacts while preserving text edges
+4. **Adaptive Histogram Equalization (CLAHE)** - Enhances local contrast for varying lighting conditions
+5. **Text Sharpening** - Improves character definition and clarity
+6. **Unsharp Masking** - Fine-tunes text edges for optimal recognition
+
+### 📊 Benefits:
+
+- ✅ **Better accuracy** on scanned documents with poor quality
+- ✅ **Improved recognition** of faded or low-contrast text
+- ✅ **Enhanced performance** on documents with noise or artifacts
+- ✅ **Automatic fallbacks** ensure processing never fails
+- ✅ **Works with all output formats** (PDF, DOCX, HTML, EPUB)
+
+> 💡 **Note:** All image enhancements are applied automatically - no configuration needed!
 
 ---
 
@@ -51,6 +78,12 @@ Enable batch processing for large PDFs to reduce memory usage:
 
 ```bash
 pdf2ocr ./pdfs --pdf --batch-size 5 --logfile pdf2ocr.log  # Process 5 pages at a time
+```
+
+High-quality OCR with custom DPI for challenging documents:
+
+```bash
+pdf2ocr ./pdfs --pdf --dpi 600 --logfile pdf2ocr.log  # Higher DPI for better quality
 ```
 
 > ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
@@ -93,6 +126,12 @@ Install Tesseract OCR and the most common language models:
 sudo apt update && sudo apt install tesseract-ocr \
     tesseract-ocr-por tesseract-ocr-eng tesseract-ocr-spa \
     tesseract-ocr-fra tesseract-ocr-ita
+```
+
+For optimal image processing performance, also install:
+
+```bash
+sudo apt install python3-scipy python3-skimage
 ```
 
 > Or, to install **all available language models**:
@@ -165,6 +204,17 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+### 📦 Dependencies
+
+The tool includes advanced image processing capabilities with the following key dependencies:
+
+- **Core OCR**: `pytesseract`, `pdf2image`, `pillow`
+- **Document Generation**: `python-docx`, `reportlab`, `pypdf`
+- **Advanced Image Processing**: `numpy`, `scipy`, `scikit-image`
+- **Progress & UI**: `tqdm`
+
+> 💡 **Note:** Advanced image processing dependencies (`scipy`, `scikit-image`) are optional - the tool will automatically fall back to basic processing if they're not available.
+
 ---
 
 ## ⚙️ Command Line Options
@@ -186,6 +236,7 @@ pdf2ocr -h
 - `--logfile`: Path to save detailed log output (UTF-8 encoded).
 - `--workers`: Number of parallel workers for processing (default: 2).
 - `--batch-size`: Number of pages to process in each batch (disabled by default). Use this to optimize memory usage for large PDFs.
+- `--dpi`: DPI for PDF to image conversion (default: 400). Higher values improve OCR quality but increase processing time.
 - `--version`: show program's version number and exit
 
 ---

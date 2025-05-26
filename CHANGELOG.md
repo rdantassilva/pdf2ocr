@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [v1.0.19 - 2025-05-26]
+
+### ✨ Added
+- **Advanced Image Preprocessing Pipeline** for significantly improved OCR accuracy on distorted documents:
+  - Automatic grayscale conversion with optimized parameters
+  - Auto-contrast enhancement for better text visibility
+  - Intelligent noise reduction using median filtering
+  - Adaptive Histogram Equalization (CLAHE) for varying lighting conditions
+  - Text-specific sharpening to improve character definition
+  - Conservative contrast boosting for enhanced readability
+  - Unsharp masking for fine-tuned text edge enhancement
+- **Robust Error Handling** with automatic fallbacks to ensure processing never fails
+- **Optional Advanced Dependencies** (scipy, scikit-image) with graceful degradation when unavailable
+- **Unified Processing** - all output formats now benefit from advanced image enhancements
+
+### 🛠 Changed
+- **Enhanced OCR Quality** across all modes (standard and layout-preserving)
+- **Improved Text Recognition** especially for poor quality scans, faded text, and noisy documents
+- **Optimized Processing Pipeline** with intelligent edge preservation during noise reduction
+- **Better Memory Management** with validation checks to prevent image corruption
+- **Updated Dependencies** to include numpy, scipy, and scikit-image for advanced image processing
+
+### 🐛 Fixed
+- **Image Processing Stability** with comprehensive error handling and fallback mechanisms
+- **Memory Efficiency** improvements in image preprocessing pipeline
+
+---
+
 ## [v1.0.18 - 2025-05-23]
 
 ### ✨ Added

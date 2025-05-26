@@ -211,7 +211,7 @@ def process_single_layout_pdf(
                                 leave=False,
                             )
                         ):
-                            # Preprocess image for better OCR quality
+                            # Preprocess image for better OCR quality (advanced processing)
                             processed_img = preprocess_image(page_img)
                             
                             # Save preprocessed image to temporary file with high quality for OCR
@@ -278,7 +278,7 @@ def process_single_layout_pdf(
                                 ),
                                 start=batch_start - 1,
                             ):
-                                # Preprocess image for better OCR quality
+                                # Preprocess image for better OCR quality (advanced processing)
                                 processed_img = preprocess_image(page_img)
                                 
                                 # Save preprocessed image to temporary file with high quality for OCR

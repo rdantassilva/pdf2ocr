@@ -5,3 +5,6 @@ pdf2image
 python-docx
 reportlab
 pypdf>=3.15.0
+numpy
+scipy
+scikit-image
