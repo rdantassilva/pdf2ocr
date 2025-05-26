@@ -23,7 +23,7 @@ from pdf2ocr.converters.epub import convert_docx_to_epub
 from pdf2ocr.converters.html import save_as_html
 from pdf2ocr.logging_config import (log_conversion_summary, log_message,
                                     log_process_start, setup_logging)
-from pdf2ocr.ocr import extract_text_from_pdf
+from pdf2ocr.ocr import extract_text_from_pdf, preprocess_image
 from pdf2ocr.state import is_shutdown_requested
 from pdf2ocr.utils import timing_context
 
@@ -196,7 +196,7 @@ def process_single_layout_pdf(
                         # Process all pages at once
                         pages_batch = convert_from_path(
                             pdf_path,
-                            dpi=200,
+                            dpi=400,
                             use_pdftocairo=True,
                         )
 
@@ -211,9 +211,12 @@ def process_single_layout_pdf(
                                 leave=False,
                             )
                         ):
-                            # Save image to temporary file with high quality for OCR
+                            # Preprocess image for better OCR quality
+                            processed_img = preprocess_image(page_img)
+                            
+                            # Save preprocessed image to temporary file with high quality for OCR
                             img_path = os.path.join(temp_dir, f"page_{page_num}.png")
-                            page_img.save(img_path, "PNG")
+                            processed_img.save(img_path, "PNG")
 
                             # Generate PDF with OCR using tesseract with configuration
                             pdf_path_base = os.path.join(temp_dir, f"page_{page_num}")
@@ -225,7 +228,7 @@ def process_single_layout_pdf(
                                 "-l",
                                 config.lang,
                                 "--dpi",
-                                "200",
+                                "400",
                                 "pdf",
                             ] + tesseract_config
                             subprocess.run(cmd, check=True, capture_output=True)
@@ -256,7 +259,7 @@ def process_single_layout_pdf(
                             # Convert batch of pages to images
                             pages_batch = convert_from_path(
                                 pdf_path,
-                                dpi=200,
+                                dpi=400,
                                 first_page=batch_start,
                                 last_page=batch_end,
                                 use_pdftocairo=True,
@@ -275,11 +278,14 @@ def process_single_layout_pdf(
                                 ),
                                 start=batch_start - 1,
                             ):
-                                # Save image to temporary file with high quality for OCR
+                                # Preprocess image for better OCR quality
+                                processed_img = preprocess_image(page_img)
+                                
+                                # Save preprocessed image to temporary file with high quality for OCR
                                 img_path = os.path.join(
                                     temp_dir, f"page_{page_num}.png"
                                 )
-                                page_img.save(img_path, "PNG")
+                                processed_img.save(img_path, "PNG")
 
                                 # Generate PDF with OCR using tesseract with configuration
                                 pdf_path_base = os.path.join(
@@ -293,7 +299,7 @@ def process_single_layout_pdf(
                                     "-l",
                                     config.lang,
                                     "--dpi",
-                                    "200",
+                                    "400",
                                     "pdf",
                                 ] + tesseract_config
                                 subprocess.run(cmd, check=True, capture_output=True)
@@ -383,7 +389,6 @@ def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
     Key features:
     - Maintains original document layout and formatting
     - Adds invisible OCR text layer for searchability
-    - Uses lower DPI (200) to optimize file size
     - Output in 'pdf_ocr_layout' directory
 
     Args:
