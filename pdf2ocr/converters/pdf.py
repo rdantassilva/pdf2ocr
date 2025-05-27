@@ -21,8 +21,7 @@ from pdf2ocr.converters.common import process_paragraphs
 from pdf2ocr.converters.docx import save_as_docx
 from pdf2ocr.converters.epub import convert_docx_to_epub
 from pdf2ocr.converters.html import save_as_html
-from pdf2ocr.logging_config import (log_conversion_summary, log_message,
-                                    log_process_start, setup_logging)
+from pdf2ocr.logging_config import log_message, setup_logging
 from pdf2ocr.ocr import extract_text_from_pdf, preprocess_image
 from pdf2ocr.state import is_shutdown_requested
 from pdf2ocr.utils import timing_context
@@ -162,7 +161,6 @@ def process_single_layout_pdf(
         tuple: (success: bool, processing_time: float, error_message: str, log_messages: list)
     """
     # Setup logging for this process
-    logger = setup_logging(config.log_path, config.quiet, is_worker=True)
     log_messages = []
 
     try:
@@ -213,7 +211,7 @@ def process_single_layout_pdf(
                         ):
                             # Preprocess image for better OCR quality (advanced processing)
                             processed_img = preprocess_image(page_img)
-                            
+
                             # Save preprocessed image to temporary file with high quality for OCR
                             img_path = os.path.join(temp_dir, f"page_{page_num}.png")
                             processed_img.save(img_path, "PNG")
@@ -280,7 +278,7 @@ def process_single_layout_pdf(
                             ):
                                 # Preprocess image for better OCR quality (advanced processing)
                                 processed_img = preprocess_image(page_img)
-                                
+
                                 # Save preprocessed image to temporary file with high quality for OCR
                                 img_path = os.path.join(
                                     temp_dir, f"page_{page_num}.png"
@@ -353,17 +351,17 @@ def process_single_layout_pdf(
                     "-dQUIET",
                     "-dBATCH",
                     "-dCompressFonts=true",  # Compress fonts
-                    "-dSubsetFonts=true",    # Subset fonts to reduce size
+                    "-dSubsetFonts=true",  # Subset fonts to reduce size
                     "-dCompressPages=true",  # Compress page content
                     "-dUseFlateCompression=true",  # Use Flate compression
-                    "-dOptimize=true",       # Enable PDF optimization
+                    "-dOptimize=true",  # Enable PDF optimization
                     "-dEmbedAllFonts=true",  # Embed fonts for consistency
                     "-dAutoRotatePages=/None",  # Prevent unwanted rotation
                     "-dColorImageDownsampleType=/Bicubic",  # Better downsampling
                     "-dColorImageResolution=150",  # Reduce image resolution for smaller size
                     "-dGrayImageDownsampleType=/Bicubic",
                     "-dGrayImageResolution=150",
-                    "-dMonoImageDownsampleType=/Bicubic", 
+                    "-dMonoImageDownsampleType=/Bicubic",
                     "-dMonoImageResolution=300",  # Keep text sharp
                     f"-sOutputFile={out_path}",
                     temp_pdf_path,
@@ -393,7 +391,9 @@ def process_single_layout_pdf(
         return False, 0, error_msg, log_messages
 
 
-def process_layout_pdf_only(config: ProcessingConfig, logger, start_time: float = None) -> None:
+def process_layout_pdf_only(
+    config: ProcessingConfig, logger, start_time: float = None
+) -> None:
     """Generate searchable PDFs while preserving the original document layout.
 
     This function processes each PDF file in the source directory and generates
@@ -678,7 +678,6 @@ def process_single_pdf(
         pdf_path = os.path.join(config.source_dir, filename)
         base_name = os.path.splitext(filename)[0]
         out_path = os.path.join(config.pdf_dir, f"{base_name}_ocr.pdf")
-        temp_pdf_path = os.path.join(config.pdf_dir, f"{base_name}_temp.pdf")
 
         total_time = 0.0
 
@@ -701,66 +700,65 @@ def process_single_pdf(
         )
 
         # Generate requested output formats
-        with timing_context("File generation", None) as get_file_time:
-            if config.generate_pdf:
-                with timing_context("PDF generation", None) as get_pdf_time:
-                    save_as_pdf(text_pages, out_path)
-                total_time += get_pdf_time.duration
-                log_messages.append(
-                    (
-                        "INFO",
-                        f"    PDF created in {get_pdf_time.duration:.2f} seconds",
-                    )
+        if config.generate_pdf:
+            with timing_context("PDF generation", None) as get_pdf_time:
+                save_as_pdf(text_pages, out_path)
+            total_time += get_pdf_time.duration
+            log_messages.append(
+                (
+                    "INFO",
+                    f"    PDF created in {get_pdf_time.duration:.2f} seconds",
                 )
+            )
 
-            if config.generate_docx:
-                with timing_context("DOCX generation", None) as get_docx_time:
-                    docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
-                    save_as_docx(text_pages, docx_output)
-                total_time += get_docx_time.duration
-                log_messages.append(
-                    (
-                        "INFO",
-                        f"    DOCX created in {get_docx_time.duration:.2f} seconds",
-                    )
+        if config.generate_docx:
+            with timing_context("DOCX generation", None) as get_docx_time:
+                docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
+                save_as_docx(text_pages, docx_output)
+            total_time += get_docx_time.duration
+            log_messages.append(
+                (
+                    "INFO",
+                    f"    DOCX created in {get_docx_time.duration:.2f} seconds",
                 )
+            )
 
-            if config.generate_html:
-                with timing_context("HTML generation", None) as get_html_time:
-                    html_output = os.path.join(config.html_dir, f"{base_name}.html")
-                    save_as_html(text_pages, html_output)
-                total_time += get_html_time.duration
-                log_messages.append(
-                    (
-                        "INFO",
-                        f"    HTML created in {get_html_time.duration:.2f} seconds",
-                    )
+        if config.generate_html:
+            with timing_context("HTML generation", None) as get_html_time:
+                html_output = os.path.join(config.html_dir, f"{base_name}.html")
+                save_as_html(text_pages, html_output)
+            total_time += get_html_time.duration
+            log_messages.append(
+                (
+                    "INFO",
+                    f"    HTML created in {get_html_time.duration:.2f} seconds",
                 )
+            )
 
-            if config.generate_epub:
-                with timing_context("EPUB generation", None) as get_epub_time:
-                    epub_output = os.path.join(config.epub_dir, f"{base_name}.epub")
-                    docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
-                    success, duration, output = convert_docx_to_epub(
-                        docx_output,
-                        epub_output,
-                        logger=logger,
-                        quiet=config.quiet,
-                        lang=config.lang,
-                    )
-                    if not success:
-                        raise RuntimeError(
-                            f"Failed to convert {base_name} to EPUB: {output}"
-                        )
-                total_time += get_epub_time.duration
-                log_messages.append(
-                    (
-                        "INFO",
-                        f"    EPUB created in {get_epub_time.duration:.2f} seconds",
-                    )
+        if config.generate_epub:
+            with timing_context("EPUB generation", None) as get_epub_time:
+                epub_output = os.path.join(config.epub_dir, f"{base_name}.epub")
+                docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
+                success, duration, output = convert_docx_to_epub(
+                    docx_output,
+                    epub_output,
+                    logger=logger,
+                    quiet=config.quiet,
+                    lang=config.lang,
                 )
+                if not success:
+                    raise RuntimeError(
+                        f"Failed to convert {base_name} to EPUB: {output}"
+                    )
+            total_time += get_epub_time.duration
+            log_messages.append(
+                (
+                    "INFO",
+                    f"    EPUB created in {get_epub_time.duration:.2f} seconds",
+                )
+            )
 
-            return True, total_time, None, log_messages
+        return True, total_time, None, log_messages
 
     except Exception as e:
         error_msg = f"Error in {filename} during {e.__class__.__name__}: {str(e)}"
@@ -768,7 +766,9 @@ def process_single_pdf(
         return False, 0, error_msg, log_messages
 
 
-def process_pdfs_with_ocr(config: ProcessingConfig, logger, start_time: float = None) -> None:
+def process_pdfs_with_ocr(
+    config: ProcessingConfig, logger, start_time: float = None
+) -> None:
     """Process PDF files with OCR and convert to selected formats.
 
     This function processes each PDF file in the source directory with OCR
@@ -1031,7 +1031,7 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger, start_time: float = 
                 total_time = time.time() - start_time
             else:
                 total_time = get_total_time()
-            
+
             summary = [
                 "\nProcessing Summary:",
                 "----------------",

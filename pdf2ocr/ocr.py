@@ -61,19 +61,20 @@ def preprocess_image(img):
     """
     import numpy as np
     from PIL import ImageEnhance
-    
+
     # Step 1: Basic preprocessing (always applied)
     img = img.convert("L")  # Convert to grayscale
     img = ImageOps.autocontrast(img)  # Auto contrast enhancement
     img = img.filter(ImageFilter.MedianFilter())  # Noise reduction filter
-    
+
     img_array = np.array(img)
     original_array = img_array.copy()  # Keep original as fallback
-    
+
     try:
         # Step 2: Advanced noise reduction while preserving edges
         try:
             from scipy import ndimage
+
             # Light gaussian blur for additional noise reduction
             blurred = ndimage.gaussian_filter(img_array.astype(float), sigma=0.5)
             # Edge detection to preserve text edges
@@ -81,22 +82,27 @@ def preprocess_image(img):
             edge_threshold = np.percentile(np.abs(edges), 80)
             mask = np.abs(edges) > edge_threshold
             # Combine: keep original where edges are strong, use blurred elsewhere
-            img_array = np.where(mask, img_array, blurred * 0.7 + img_array * 0.3).astype(np.uint8)
+            img_array = np.where(
+                mask, img_array, blurred * 0.7 + img_array * 0.3
+            ).astype(np.uint8)
         except ImportError:
             # Fallback: additional light median filter
             img = Image.fromarray(img_array)
             img = img.filter(ImageFilter.MedianFilter(size=3))
             img_array = np.array(img)
-        
+
         # Step 3: Adaptive contrast enhancement
         try:
             from skimage import exposure
+
             # Conservative CLAHE to avoid over-enhancement
             img_array = exposure.equalize_adapthist(
-                img_array, 
-                kernel_size=max(32, img_array.shape[0]//16),  # Larger kernel for smoother enhancement
+                img_array,
+                kernel_size=max(
+                    32, img_array.shape[0] // 16
+                ),  # Larger kernel for smoother enhancement
                 clip_limit=0.01,  # Very conservative to avoid artifacts
-                nbins=256
+                nbins=256,
             )
             img_array = (img_array * 255).astype(np.uint8)
         except ImportError:
@@ -104,21 +110,22 @@ def preprocess_image(img):
             img = Image.fromarray(img_array)
             img = ImageOps.autocontrast(img, cutoff=1)
             img_array = np.array(img)
-        
+
         # Step 4: Text sharpening (moderate)
         img = Image.fromarray(img_array)
         enhancer = ImageEnhance.Sharpness(img)
         img = enhancer.enhance(1.2)  # Moderate sharpening
-        
+
         # Step 5: Contrast boost (gentle)
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(1.1)  # Gentle contrast boost
-        
+
         img_array = np.array(img)
-        
+
         # Step 6: Unsharp mask for text clarity (conservative)
         try:
             from scipy import ndimage
+
             gaussian = ndimage.gaussian_filter(img_array.astype(float), sigma=1.0)
             unsharp_mask = img_array.astype(float) - gaussian
             # Conservative unsharp mask application
@@ -127,14 +134,18 @@ def preprocess_image(img):
         except ImportError:
             # Fallback: PIL unsharp mask (conservative)
             img = Image.fromarray(img_array)
-            img = img.filter(ImageFilter.UnsharpMask(radius=1, percent=110, threshold=5))
+            img = img.filter(
+                ImageFilter.UnsharpMask(radius=1, percent=110, threshold=5)
+            )
             img_array = np.array(img)
-        
+
         # Validation: ensure we haven't destroyed the image
-        if np.std(img_array) < 10:  # Image became too uniform (likely all black or white)
+        if (
+            np.std(img_array) < 10
+        ):  # Image became too uniform (likely all black or white)
             img_array = original_array  # Revert to original
-        
-    except Exception as e:
+
+    except Exception:
         # If anything goes wrong, revert to original with basic processing
         img_array = original_array
         img = Image.fromarray(img_array)
@@ -143,43 +154,43 @@ def preprocess_image(img):
         img = ImageOps.autocontrast(img, cutoff=2)
         img = img.filter(ImageFilter.MedianFilter())
         img_array = np.array(img)
-    
+
     return Image.fromarray(img_array)
 
 
 # def preprocess_image_conservative(img):
 #     """Conservative image preprocessing for documents with minimal distortion.
-#     
+#
 #     This is a lighter version of preprocess_image() that applies only basic
 #     enhancements. Use this if the advanced preprocessing is too aggressive
 #     or if processing speed is more important than maximum quality.
-# 
+#
 #     Args:
 #         img: PIL Image object
-# 
+#
 #     Returns:
 #         PIL Image: Processed image ready for OCR
 #     """
 #     from PIL import ImageEnhance
-#     
+#
 #     # Convert to grayscale if not already
 #     if img.mode != "L":
 #         img = img.convert("L")
-#     
+#
 #     # Basic noise reduction
 #     img = img.filter(ImageFilter.MedianFilter(size=3))
-#     
+#
 #     # Gentle contrast enhancement
 #     img = ImageOps.autocontrast(img, cutoff=1)
-#     
+#
 #     # Light sharpening
 #     enhancer = ImageEnhance.Sharpness(img)
 #     img = enhancer.enhance(1.1)
-#     
+#
 #     # Slight contrast boost
 #     enhancer = ImageEnhance.Contrast(img)
 #     img = enhancer.enhance(1.05)
-#     
+#
 #     return img
 
 
@@ -442,9 +453,9 @@ def extract_text_from_pdf(
             if tqdm_file != sys.stderr:
                 tqdm_file.close()
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         raise OCRError(f"PDF file not found: {pdf_path}")
-    except PermissionError as e:
+    except PermissionError:
         raise OCRError(f"Permission denied accessing PDF file: {pdf_path}")
     except Exception as e:
         raise OCRError(f"Error during OCR processing: {str(e)}")

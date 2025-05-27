@@ -160,11 +160,11 @@ def main():
         if args.workers < 1:
             print("Error: --workers must be at least 1")
             sys.exit(1)
-        
+
         if args.batch_size is not None and args.batch_size < 1:
             print("Error: --batch-size must be at least 1")
             sys.exit(1)
-        
+
         if args.dpi < 72 or args.dpi > 1200:
             print("Error: --dpi must be between 72 and 1200")
             sys.exit(1)

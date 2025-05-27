@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 import time
-from typing import Optional
 
 from pdf2ocr.logging_config import log_message
 

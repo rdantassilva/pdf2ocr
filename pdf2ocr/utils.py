@@ -6,7 +6,7 @@ import sys
 import time
 from contextlib import contextmanager
 from logging import Logger
-from typing import Generator, List, Optional
+from typing import Generator, Optional
 
 from pdf2ocr.logging_config import log_message, setup_logging
 

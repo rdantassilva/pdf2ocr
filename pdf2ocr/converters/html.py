@@ -120,7 +120,7 @@ def save_as_html(text_pages: List[str], output_path: str) -> float:
     html_content = []
     for idx, page_text in enumerate(text_pages[page_offset:], start=1):
         # Start page div
-        html_content.append(f'<div class="page">')
+        html_content.append('<div class="page">')
         html_content.append(f'<div class="page-header">pdf2ocr - Page {idx}</div>')
 
         # Process paragraphs
