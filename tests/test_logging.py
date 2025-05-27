@@ -6,7 +6,7 @@ import sys
 from contextlib import redirect_stdout, redirect_stderr
 from pathlib import Path
 from pdf2ocr.config import ProcessingConfig
-from pdf2ocr.main import process_pdfs_with_ocr, process_layout_pdf_only
+from pdf2ocr.converters import process_pdfs_with_ocr, process_layout_pdf_only
 from pdf2ocr.logging_config import setup_logging, log_message
 from pdf2ocr import __version__
 

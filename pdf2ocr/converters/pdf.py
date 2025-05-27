@@ -393,7 +393,7 @@ def process_single_layout_pdf(
         return False, 0, error_msg, log_messages
 
 
-def process_layout_pdf_only(config: ProcessingConfig, logger) -> None:
+def process_layout_pdf_only(config: ProcessingConfig, logger, start_time: float = None) -> None:
     """Generate searchable PDFs while preserving the original document layout.
 
     This function processes each PDF file in the source directory and generates
@@ -768,7 +768,7 @@ def process_single_pdf(
         return False, 0, error_msg, log_messages
 
 
-def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
+def process_pdfs_with_ocr(config: ProcessingConfig, logger, start_time: float = None) -> None:
     """Process PDF files with OCR and convert to selected formats.
 
     This function processes each PDF file in the source directory with OCR
@@ -1026,7 +1026,12 @@ def process_pdfs_with_ocr(config: ProcessingConfig, logger) -> None:
                         tqdm_file.close()
 
             # Log final summary
-            total_time = get_total_time()
+            # Calculate total time from program start if start_time provided, otherwise use timing context
+            if start_time is not None:
+                total_time = time.time() - start_time
+            else:
+                total_time = get_total_time()
+            
             summary = [
                 "\nProcessing Summary:",
                 "----------------",

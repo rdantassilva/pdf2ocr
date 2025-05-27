@@ -48,6 +48,7 @@ Important Notes:
 import argparse
 import signal
 import sys
+import time
 
 from pdf2ocr import __version__
 from pdf2ocr.config import ProcessingConfig
@@ -145,6 +146,8 @@ def parse_arguments():
 
 def main():
     """Main entry point for the PDF OCR converter."""
+    # Record start time for total execution measurement
+    start_time = time.time()
     logger = None  # Initialize logger to None
     try:
         # Register signal handlers
@@ -212,9 +215,9 @@ def main():
 
         # Process PDFs based on layout preservation setting
         if config.preserve_layout:
-            process_layout_pdf_only(config, logger)
+            process_layout_pdf_only(config, logger, start_time)
         else:
-            process_pdfs_with_ocr(config, logger)
+            process_pdfs_with_ocr(config, logger, start_time)
 
     except KeyboardInterrupt:
         if not is_shutdown_requested():
