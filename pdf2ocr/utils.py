@@ -15,6 +15,10 @@ class Timer:
     """A simple timer class that can be pickled."""
 
     def __init__(self):
+        """Initialize the timer and start timing.
+
+        The timer starts immediately upon initialization.
+        """
         self.start_time = time.perf_counter()
         self.duration = None
 

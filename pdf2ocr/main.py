@@ -1,48 +1,40 @@
 # coding:utf-8
 
-"""
-A CLI tool to apply OCR on PDF files and export to multiple formats.
+"""Main entry point module for pdf2ocr CLI application.
 
-Description of Libraries:
-- 📜 PIL/Pillow: Image processing (open, convert and enhance images for OCR)
-- 🔍 pytesseract: Python interface for Tesseract OCR (text recognition in images)
-- 📊 tqdm: Displays progress bars for long operations
-- 📄 pdf2image: Converts PDF pages to images for processing
-- 📝 python-docx: Creates and manipulates Word documents (.docx)
-- 🖨️ reportlab: Programmatic PDF generation
-- 🏷️ tesseract-ocr: OCR engine (optical character recognition)
-- 🖼️ poppler-utils: PDF manipulation tools (includes pdftoppm)
-- 📚 calibre: E-book management suite (provides ebook-convert)
-- 🐍 pypdf: Merge per-page searchable PDFs into one (layout-preserving PDF mode)
+This module provides the command-line interface and main execution flow for pdf2ocr.
+It handles argument parsing, configuration setup, signal handling, and orchestrates
+the PDF processing workflow.
 
-PDF Generation Modes:
-1. Layout-Preserving Mode (--preserve-layout):
-   - Maintains exact visual appearance of original document
-   - Adds invisible OCR text layer for searchability
-   - Best for forms, scientific papers, magazines
-   - Uses lower DPI (200) to optimize file size
-   - Output in 'pdf_ocr_layout' directory
+Key Functions:
+- parse_arguments(): Configure and parse command-line arguments
+- signal_handler(): Handle graceful shutdown on interruption signals
+- main(): Main entry point that coordinates the entire processing workflow
 
-2. Standard Mode (default):
-   - Creates new PDF with clean, consistent formatting
-   - Focuses on text readability and accessibility
-   - Best for books, articles, general documents
-   - Uses standard fonts and margins
-   - Output in 'pdf_ocr' directory
+Command Line Arguments:
+- source_dir: Directory containing PDF files to process
+- --dest-dir: Optional destination directory for output files
+- --pdf, --docx, --html, --epub: Output format selection
+- --preserve-layout: Enable layout-preserving PDF mode
+- --lang: OCR language code (default: Portuguese)
+- --workers: Number of parallel processing workers
+- --batch-size: Pages per batch for memory management
+- --dpi: Image resolution for OCR processing (72-1200)
+- --quiet, --summary: Output verbosity control
+- --logfile: Optional log file path
 
-Conversion Flow:
-1. 📄 pdf2image uses `pdftoppm` to convert PDFs to images
-2. 🖼️ pytesseract uses `tesseract-ocr` to extract text from images
-3. 📝 python-docx generates Word documents with extracted text
-4. 🖨️ reportlab creates PDFs with OCR-processed text
-5. 📚 calibre (optional) converts DOCX to EPUB using `ebook-convert`
+Processing Flow:
+1. Parse and validate command-line arguments
+2. Create ProcessingConfig with user settings
+3. Set up logging and validate Tesseract language
+4. Route to appropriate processing function based on mode
+5. Handle graceful shutdown and cleanup
 
-Important Notes:
-- To generate EPUB, Calibre must be installed on the system
-- The `ebook-convert` command must be available in PATH
-- Very large files may require more time and memory
-- OCR quality depends on the original PDF clarity
-- The script creates separate folders for each output type (docx, pdf, epub)
+Error Handling:
+- Validates argument ranges and dependencies
+- Provides clear error messages for invalid configurations
+- Supports graceful interruption with Ctrl+C
+- Ensures proper cleanup of resources
 """
 
 import argparse

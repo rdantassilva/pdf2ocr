@@ -50,6 +50,11 @@ class ProcessingConfig:
     dpi: int = 400
 
     def __post_init__(self):
+        """Initialize derived paths after dataclass initialization.
+
+        This method is automatically called after the dataclass __init__ method
+        to set up the output directory paths based on the configuration settings.
+        """
         # Initialize derived paths
         self._effective_dest_dir = (
             self.dest_dir if self.dest_dir is not None else self.source_dir

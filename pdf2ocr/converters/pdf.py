@@ -407,6 +407,7 @@ def process_layout_pdf_only(
     Args:
         config: Processing configuration
         logger: Logger instance
+        start_time: Optional start time for total execution measurement
     """
     try:
         # Validate configuration
@@ -784,6 +785,7 @@ def process_pdfs_with_ocr(
     Args:
         config: Processing configuration
         logger: Logger instance
+        start_time: Optional start time for total execution measurement
     """
     try:
         # Validate configuration
