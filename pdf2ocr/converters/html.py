@@ -109,25 +109,20 @@ def save_as_html(text_pages: List[str], output_path: str) -> float:
     html_end = """</body>
 </html>"""
 
-    # Skip empty pages at the start
-    page_offset = 0
-    for idx, page_text in enumerate(text_pages):
-        if page_text.strip():
-            break
-        page_offset += 1
-
-    # Process each page
     html_content = []
-    for idx, page_text in enumerate(text_pages[page_offset:], start=1):
-        # Start page div
-        html_content.append('<div class="page">')
-        html_content.append(f'<div class="page-header">pdf2ocr - Page {idx}</div>')
+    page_num = 0
+    for page_text in text_pages:
+        paragraphs = process_paragraphs(page_text)
+        if not paragraphs:
+            continue
 
-        # Process paragraphs
-        for para in process_paragraphs(page_text):
+        page_num += 1
+        html_content.append('<div class="page">')
+        html_content.append(f'<div class="page-header">pdf2ocr - Page {page_num}</div>')
+
+        for para in paragraphs:
             html_content.append(f"<p>{para}</p>")
 
-        # End page div
         html_content.append("</div>")
 
     # Combine all parts

@@ -1,5 +1,7 @@
 """PDF conversion and processing functionality."""
 
+from pdf2ocr.converters.common import (merge_lines_into_paragraphs,
+                                       strip_repeated_headers_footers)
 from pdf2ocr.converters.docx import save_as_docx
 from pdf2ocr.converters.epub import convert_docx_to_epub
 from pdf2ocr.converters.html import save_as_html
@@ -13,4 +15,6 @@ __all__ = [
     "save_as_docx",
     "save_as_html",
     "convert_docx_to_epub",
+    "merge_lines_into_paragraphs",
+    "strip_repeated_headers_footers",
 ]

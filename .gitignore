@@ -32,6 +32,11 @@ ehthumbs.db
 # Program outputs
 output/
 saida/
+docx/
+pdf_ocr/
+pdf_ocr_layout/
+epub/
+html/
 *.pdf
 *.docx
 *.epub

@@ -17,7 +17,7 @@ from reportlab.pdfgen import canvas
 from tqdm import tqdm
 
 from pdf2ocr.config import ProcessingConfig
-from pdf2ocr.converters.common import process_paragraphs
+from pdf2ocr.converters.common import process_paragraphs, strip_repeated_headers_footers
 from pdf2ocr.converters.docx import save_as_docx
 from pdf2ocr.converters.epub import convert_docx_to_epub
 from pdf2ocr.converters.html import save_as_html
@@ -73,30 +73,24 @@ def save_as_pdf(text_pages: List[str], output_path: str) -> float:
     c.setKeywords("OCR, PDF, text recognition")
 
     width, height = A4
+    x = 2 * cm
+    line_height = 12
 
-    # Skip empty pages at the start
-    page_offset = 0
-    for idx, page_text in enumerate(text_pages):
-        if page_text.strip():
-            break
-        page_offset += 1
+    page_num = 0
+    for page_text in text_pages:
+        paragraphs = process_paragraphs(page_text)
+        if not paragraphs:
+            continue
 
-    for idx, page_text in enumerate(text_pages[page_offset:], start=1):
-        x = 2 * cm  # Left margin
-        y = height - 3 * cm  # Top margin
+        page_num += 1
+        y = height - 3 * cm
+        header = f"pdf2ocr - Page {page_num}"
 
-        # Page header
-        c.setFont("Helvetica", 10)  # Changed to regular weight for consistency
-        header = f"pdf2ocr - Page {idx}"  # New header format
-        c.drawString(x, height - 1 * cm, header)  # Aligned left like HTML
-
-        # Main text
         c.setFont("Helvetica", 10)
-        line_height = 12
+        c.drawString(x, height - 1 * cm, header)
+        c.setFont("Helvetica", 10)
 
-        # Process paragraphs
-        for para in process_paragraphs(page_text):
-            # Split long paragraphs into lines that fit the page width
+        for para in paragraphs:
             words = para.split()
             current_line = []
 
@@ -104,42 +98,34 @@ def save_as_pdf(text_pages: List[str], output_path: str) -> float:
                 current_line.append(word)
                 line = " ".join(current_line)
 
-                # Check if line width exceeds page width
                 if c.stringWidth(line, "Helvetica", 10) > (width - 4 * cm):
-                    # Remove last word and draw current line
                     current_line.pop()
                     line = " ".join(current_line)
 
-                    # Draw line and check page break
-                    if y < 2 * cm:  # Check page end
+                    if y < 2 * cm:
                         c.showPage()
                         y = height - 3 * cm
-                        # Repeat header on new page
                         c.setFont("Helvetica", 10)
-                        c.drawString(x, height - 1 * cm, header)
+                        c.drawString(x, height - 1 * cm, f"{header} (cont.)")
                         c.setFont("Helvetica", 10)
 
                     c.drawString(x, y, line)
                     y -= line_height
 
-                    # Start new line with the word that didn't fit
                     current_line = [word]
 
-            # Draw remaining words in the last line
             if current_line:
                 line = " ".join(current_line)
-                if y < 2 * cm:  # Check page end
+                if y < 2 * cm:
                     c.showPage()
                     y = height - 3 * cm
-                    # Repeat header on new page
                     c.setFont("Helvetica", 10)
-                    c.drawString(x, height - 1 * cm, header)
+                    c.drawString(x, height - 1 * cm, f"{header} (cont.)")
                     c.setFont("Helvetica", 10)
 
                 c.drawString(x, y, line)
                 y -= line_height
 
-            # Extra space between paragraphs
             y -= line_height
 
         c.showPage()
@@ -699,6 +685,8 @@ def process_single_pdf(
                 f"    Text extracted in {get_text_time.duration:.2f} seconds",
             )
         )
+
+        text_pages = strip_repeated_headers_footers(text_pages)
 
         # Generate requested output formats
         if config.generate_pdf:
