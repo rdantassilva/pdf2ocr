@@ -101,6 +101,13 @@ Fast processing for clean documents with lower DPI:
 pdf2ocr ./pdfs --pdf --dpi 150 --logfile pdf2ocr.log  # Lower DPI for faster processing
 ```
 
+Control paragraph length with max sentences:
+
+```bash
+pdf2ocr ./pdfs --pdf --max-sentences 10  # Split paragraphs longer than 10 sentences
+pdf2ocr ./pdfs --pdf --max-sentences 0   # Disable sentence-based splitting
+```
+
 > ⚠️ When using `--preserve-layout`, only PDF output is supported. Other formats will be automatically disabled.
 
 ---
@@ -252,6 +259,7 @@ pdf2ocr -h
 - `--workers`: Number of parallel workers for processing (default: 2).
 - `--batch-size`: Number of pages to process in each batch (disabled by default). Use this to optimize memory usage for large PDFs.
 - `--dpi`: DPI for PDF to image conversion (default: 400, range: 72-1200). Higher values improve OCR quality but increase processing time and memory usage.
+- `--max-sentences`: Max sentences per paragraph — splits overly long paragraphs (default: 15, 0 to disable).
 - `--version`: show program's version number and exit
 
 ---
