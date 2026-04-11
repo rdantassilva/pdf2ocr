@@ -2,12 +2,12 @@
 
 import os
 import time
-from typing import List
+from typing import List, Optional
 
 from pdf2ocr.converters.common import process_paragraphs
 
 
-def save_as_html(text_pages: List[str], output_path: str) -> float:
+def save_as_html(text_pages: List[str], output_path: str, max_sentences: Optional[int] = None) -> float:
     """Creates a new HTML document with OCR-extracted text in a clean format.
 
     This function generates a new HTML document that focuses on text readability
@@ -112,7 +112,7 @@ def save_as_html(text_pages: List[str], output_path: str) -> float:
     html_content = []
     page_num = 0
     for page_text in text_pages:
-        paragraphs = process_paragraphs(page_text)
+        paragraphs = process_paragraphs(page_text, max_sentences=max_sentences)
         if not paragraphs:
             continue
 

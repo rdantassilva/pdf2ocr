@@ -27,7 +27,7 @@ from pdf2ocr.state import is_shutdown_requested
 from pdf2ocr.utils import timing_context
 
 
-def save_as_pdf(text_pages: List[str], output_path: str) -> float:
+def save_as_pdf(text_pages: List[str], output_path: str, max_sentences: Optional[int] = None) -> float:
     """Creates a new PDF with OCR-extracted text in a clean, standardized format.
 
     This function generates a new PDF document that focuses on text readability
@@ -78,7 +78,7 @@ def save_as_pdf(text_pages: List[str], output_path: str) -> float:
 
     page_num = 0
     for page_text in text_pages:
-        paragraphs = process_paragraphs(page_text)
+        paragraphs = process_paragraphs(page_text, max_sentences=max_sentences)
         if not paragraphs:
             continue
 
@@ -691,7 +691,7 @@ def process_single_pdf(
         # Generate requested output formats
         if config.generate_pdf:
             with timing_context("PDF generation", None) as get_pdf_time:
-                save_as_pdf(text_pages, out_path)
+                save_as_pdf(text_pages, out_path, max_sentences=config.max_sentences)
             total_time += get_pdf_time.duration
             log_messages.append(
                 (
@@ -703,7 +703,7 @@ def process_single_pdf(
         if config.generate_docx:
             with timing_context("DOCX generation", None) as get_docx_time:
                 docx_output = os.path.join(config.docx_dir, f"{base_name}.docx")
-                save_as_docx(text_pages, docx_output)
+                save_as_docx(text_pages, docx_output, max_sentences=config.max_sentences)
             total_time += get_docx_time.duration
             log_messages.append(
                 (
@@ -715,7 +715,7 @@ def process_single_pdf(
         if config.generate_html:
             with timing_context("HTML generation", None) as get_html_time:
                 html_output = os.path.join(config.html_dir, f"{base_name}.html")
-                save_as_html(text_pages, html_output)
+                save_as_html(text_pages, html_output, max_sentences=config.max_sentences)
             total_time += get_html_time.duration
             log_messages.append(
                 (

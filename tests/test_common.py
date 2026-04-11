@@ -192,3 +192,27 @@ class TestProcessParagraphs:
     def test_empty_input(self):
         assert process_paragraphs("") == []
         assert process_paragraphs([]) == []
+
+    def test_max_sentences_splits_long_paragraph(self):
+        text = (
+            "Primeira frase. Segunda frase. Terceira frase. "
+            "Quarta frase. Quinta frase. Sexta frase. "
+            "Sétima frase. Oitava frase. Nona frase. Décima frase."
+        )
+        result = process_paragraphs(text, max_sentences=5)
+        assert len(result) == 2
+        assert "Primeira" in result[0]
+        assert "Sexta" in result[1]
+
+    def test_max_sentences_none_does_not_split(self):
+        text = (
+            "Primeira frase. Segunda frase. Terceira frase. "
+            "Quarta frase. Quinta frase. Sexta frase."
+        )
+        result = process_paragraphs(text, max_sentences=None)
+        assert len(result) == 1
+
+    def test_max_sentences_short_paragraph_untouched(self):
+        text = "Uma frase. Duas frases. Três frases."
+        result = process_paragraphs(text, max_sentences=5)
+        assert len(result) == 1

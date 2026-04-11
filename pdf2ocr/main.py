@@ -132,6 +132,12 @@ def parse_arguments():
         default=400,
         help="DPI for PDF to image conversion (default: 400). Higher values improve OCR quality but increase processing time.",
     )
+    parser.add_argument(
+        "--max-sentences",
+        type=int,
+        default=15,
+        help="Max sentences per paragraph — splits overly long paragraphs (default: 15, 0 to disable).",
+    )
     parser.add_argument("--version", action="version", version=f"pdf2ocr {__version__}")
     return parser.parse_args()
 
@@ -161,6 +167,13 @@ def main():
             print("Error: --dpi must be between 72 and 1200")
             sys.exit(1)
 
+        if args.max_sentences is not None and args.max_sentences < 0:
+            print("Error: --max-sentences must be 0 (disabled) or a positive number")
+            sys.exit(1)
+
+        if args.max_sentences == 0:
+            args.max_sentences = None
+
         # Create processing configuration
         config = ProcessingConfig(
             source_dir=args.source_dir,
@@ -177,6 +190,7 @@ def main():
             workers=args.workers,
             batch_size=args.batch_size,
             dpi=args.dpi,
+            max_sentences=args.max_sentences,
         )
 
         # Set up logging

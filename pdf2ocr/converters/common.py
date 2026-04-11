@@ -150,7 +150,31 @@ def strip_repeated_headers_footers(text_pages: List[str]) -> List[str]:
     return cleaned
 
 
-def process_paragraphs(text: Union[str, List[str]]) -> List[str]:
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?…])\s+")
+
+
+def _split_long_paragraph(text: str, max_sentences: int) -> List[str]:
+    """Split a paragraph that exceeds *max_sentences* into smaller chunks.
+
+    Splits on sentence boundaries (after ``.!?…`` followed by whitespace).
+    Each resulting chunk has at most *max_sentences* sentences.
+    """
+    sentences = _SENTENCE_SPLIT.split(text)
+    if len(sentences) <= max_sentences:
+        return [text]
+
+    chunks: List[str] = []
+    for i in range(0, len(sentences), max_sentences):
+        chunk = " ".join(sentences[i : i + max_sentences])
+        if chunk.strip():
+            chunks.append(chunk)
+    return chunks
+
+
+def process_paragraphs(
+    text: Union[str, List[str]],
+    max_sentences: Optional[int] = None,
+) -> List[str]:
     """Process and clean paragraphs from text input.
 
     This function processes text input and returns a list of clean paragraphs.
@@ -160,21 +184,15 @@ def process_paragraphs(text: Union[str, List[str]]) -> List[str]:
     - Preserving paragraph breaks (double newlines)
     - Removing extra whitespace and empty lines
     - Maintaining proper text flow
+    - Optionally splitting overly long paragraphs at sentence boundaries
 
     Args:
         text: Input text, can be a single string or list of strings
+        max_sentences: If set, paragraphs exceeding this number of sentences
+            are split at sentence boundaries as a safety net.
 
     Returns:
-        List[str]: List of cleaned paragraphs, with each paragraph having proper
-                  line joining and spacing.
-
-    Example:
-        >>> text = '''First line
-        ...          Second line
-        ...
-        ...          New paragraph'''
-        >>> process_paragraphs(text)
-        ['First line Second line', 'New paragraph']
+        List[str]: List of cleaned paragraphs.
     """
     if isinstance(text, list):
         text = "\n\n".join(text)
@@ -194,6 +212,9 @@ def process_paragraphs(text: Union[str, List[str]]) -> List[str]:
         clean_text = " ".join(line for line in lines if line)
 
         if clean_text:
-            paragraphs.append(clean_text)
+            if max_sentences and max_sentences > 0:
+                paragraphs.extend(_split_long_paragraph(clean_text, max_sentences))
+            else:
+                paragraphs.append(clean_text)
 
     return paragraphs

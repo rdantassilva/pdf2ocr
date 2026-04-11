@@ -2,7 +2,7 @@
 
 import os
 import time
-from typing import List, Union
+from typing import List, Optional, Union
 
 from docx import Document
 from docx.shared import Pt, RGBColor
@@ -10,7 +10,7 @@ from docx.shared import Pt, RGBColor
 from pdf2ocr.converters.common import process_paragraphs
 
 
-def save_as_docx(text_pages: Union[str, List[str]], output_path: str) -> float:
+def save_as_docx(text_pages: Union[str, List[str]], output_path: str, max_sentences: Optional[int] = None) -> float:
     """Creates a new DOCX document with OCR-extracted text in a clean format.
 
     This function generates a new Word document that focuses on text readability
@@ -48,7 +48,7 @@ def save_as_docx(text_pages: Union[str, List[str]], output_path: str) -> float:
     font.color.rgb = RGBColor(0, 0, 0)
 
     # Process text content
-    paragraphs = process_paragraphs(text_pages)
+    paragraphs = process_paragraphs(text_pages, max_sentences=max_sentences)
 
     # Add paragraphs to document
     for para in paragraphs:

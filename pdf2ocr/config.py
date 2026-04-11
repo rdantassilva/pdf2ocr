@@ -48,6 +48,7 @@ class ProcessingConfig:
     workers: int = 2
     batch_size: Optional[int] = None
     dpi: int = 400
+    max_sentences: Optional[int] = None
 
     def __post_init__(self):
         """Initialize derived paths after dataclass initialization.
