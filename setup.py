@@ -24,7 +24,10 @@ setup(
     'reportlab>=4.0.0',
     'tqdm>=4.45.0',
     'Pillow>=9.0.0',
-    'pypdf>=3.15.0'
+    'pypdf>=3.15.0',
+    'numpy>=1.21.0',
+    'scipy>=1.7.0',
+    'scikit-image>=0.19.0'
     ],
     entry_points={
         'console_scripts': [
