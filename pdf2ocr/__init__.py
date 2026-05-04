@@ -84,4 +84,4 @@ Important Notes:
 - Supports graceful interruption and resume capabilities
 """
 
-__version__ = "1.1.2"
+__version__ = "1.1.3"
