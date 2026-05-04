@@ -55,12 +55,20 @@ The `--dpi` parameter controls the resolution of PDF to image conversion:
 
 ## 🚀 Quick Install & Usage
 
-### Install globally
+### Install globally (recommended)
 
-Install `pdf2ocr` and use it as a command-line tool:
+Use `pipx` to install `pdf2ocr` as a standalone CLI tool, isolated from your system Python:
 
 ```bash
-pip install pdf2ocr 
+pipx install pdf2ocr
+```
+
+> `pipx` installs the tool in its own virtual environment and makes it available system-wide. Install pipx with `brew install pipx` (macOS) or `pip install pipx` (Linux/Windows).
+
+### Install with pip
+
+```bash
+pip install pdf2ocr
 ```
 ---
 ### 📌 Usage Examples
