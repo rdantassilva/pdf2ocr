@@ -19,12 +19,11 @@ setup(
     packages=find_packages(),
     install_requires=[
     'pytesseract>=0.3.10',
-    'pdf2image>=1.16.0',
+    'PyMuPDF>=1.24.0',
     'python-docx>=0.8.11',
     'reportlab>=4.0.0',
     'tqdm>=4.45.0',
     'Pillow>=9.0.0',
-    'pypdf>=3.15.0',
     'numpy>=1.21.0',
     'scipy>=1.7.0',
     'scikit-image>=0.19.0'
