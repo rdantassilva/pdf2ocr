@@ -150,6 +150,8 @@ sudo apt update && sudo apt install tesseract-ocr \
     tesseract-ocr-fra tesseract-ocr-ita
 ```
 
+> ℹ️ **Poppler is no longer required** — PDF rendering is handled by PyMuPDF, which is installed automatically with `pip install pdf2ocr`.
+
 For optimal image processing performance, also install:
 
 ```bash
@@ -170,10 +172,10 @@ sudo apt install tesseract-ocr-all
 
 ```bash
 # For modern systems (DNF)
-sudo dnf install tesseract poppler-utils calibre
+sudo dnf install tesseract calibre
 
 # For older systems (YUM)
-sudo yum install tesseract poppler-utils calibre
+sudo yum install tesseract calibre
 ```
 
 #### To install additional OCR language models:
@@ -188,7 +190,7 @@ sudo dnf install tesseract-langpack-por tesseract-langpack-eng \
 ### macOS (Homebrew)
 
 ```bash
-brew install tesseract poppler
+brew install tesseract
 brew install --cask calibre
 ```
 
@@ -230,12 +232,12 @@ pip install -r requirements.txt
 
 The tool includes advanced image processing capabilities with the following key dependencies:
 
-- **Core OCR**: `pytesseract`, `pdf2image`, `pillow`
-- **Document Generation**: `python-docx`, `reportlab`, `pypdf`
+- **Core OCR**: `pytesseract`, `PyMuPDF`, `pillow`
+- **Document Generation**: `python-docx`, `reportlab`
 - **Advanced Image Processing**: `numpy`, `scipy`, `scikit-image`
 - **Progress & UI**: `tqdm`
 
-> 💡 **Note:** Advanced image processing dependencies (`scipy`, `scikit-image`) are optional - the tool will automatically fall back to basic processing if they're not available.
+> 💡 **Note:** `PyMuPDF` is self-contained — no system-level PDF library (e.g. Poppler) is required. Advanced image processing dependencies (`scipy`, `scikit-image`) are optional - the tool will automatically fall back to basic processing if they're not available.
 
 ---
 
