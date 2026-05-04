@@ -76,45 +76,32 @@ def test_extract_text_from_pdf_passes_config_to_image_function():
     """Test that extract_text_from_pdf correctly converts list config to string and passes it."""
     test_pdf_path = "test.pdf"
     tesseract_config = ["--psm", "6", "--oem", "3"]
-    
-    # Mock dependencies
-    with patch('pdf2ocr.ocr.PdfReader') as mock_pdf_reader, \
-         patch('pdf2ocr.ocr.convert_from_path') as mock_convert, \
-         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text, \
-         patch('builtins.open', mock_open()) as mock_file:
-        
-        # Setup mocks
-        mock_pdf = MagicMock()
-        mock_pdf.pages = [MagicMock(), MagicMock()]  # 2 pages
-        mock_pdf_reader.return_value = mock_pdf
-        
-        mock_image1 = MagicMock()
-        mock_image2 = MagicMock()
-        mock_convert.return_value = [mock_image1, mock_image2]
-        
+
+    mock_image1 = MagicMock()
+    mock_image2 = MagicMock()
+
+    with patch('pdf2ocr.ocr._count_pdf_pages', return_value=2), \
+         patch('pdf2ocr.ocr._render_pdf_pages', return_value=[mock_image1, mock_image2]), \
+         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text:
+
         mock_extract_text.side_effect = ["text from page 1", "text from page 2"]
-        
-        # Call the function
+
         result_text, result_pages, duration = extract_text_from_pdf(
             test_pdf_path, tesseract_config, "por"
         )
-        
-        # Verify that extract_text_from_image was called with the correct config string
+
         assert mock_extract_text.call_count == 2
-        
-        # Check first call
-        args1, kwargs1 = mock_extract_text.call_args_list[0]
-        assert args1[0] == mock_image1  # image
-        assert args1[1] == "por"        # language
-        assert args1[2] == "--psm 6 --oem 3"  # config string (converted from list)
-        
-        # Check second call
-        args2, kwargs2 = mock_extract_text.call_args_list[1]
-        assert args2[0] == mock_image2  # image
-        assert args2[1] == "por"        # language
-        assert args2[2] == "--psm 6 --oem 3"  # config string (converted from list)
-        
-        # Verify results
+
+        args1, _ = mock_extract_text.call_args_list[0]
+        assert args1[0] == mock_image1
+        assert args1[1] == "por"
+        assert args1[2] == "--psm 6 --oem 3"
+
+        args2, _ = mock_extract_text.call_args_list[1]
+        assert args2[0] == mock_image2
+        assert args2[1] == "por"
+        assert args2[2] == "--psm 6 --oem 3"
+
         assert result_text == "text from page 1\n\ntext from page 2"
         assert result_pages == ["text from page 1", "text from page 2"]
         assert duration > 0
@@ -123,71 +110,51 @@ def test_extract_text_from_pdf_passes_config_to_image_function():
 def test_extract_text_from_pdf_with_empty_config():
     """Test that extract_text_from_pdf works with empty tesseract_config."""
     test_pdf_path = "test.pdf"
-    tesseract_config = []  # Empty config
-    
-    # Mock dependencies
-    with patch('pdf2ocr.ocr.PdfReader') as mock_pdf_reader, \
-         patch('pdf2ocr.ocr.convert_from_path') as mock_convert, \
-         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text, \
-         patch('builtins.open', mock_open()) as mock_file:
-        
-        # Setup mocks
-        mock_pdf = MagicMock()
-        mock_pdf.pages = [MagicMock()]  # 1 page
-        mock_pdf_reader.return_value = mock_pdf
-        
-        mock_image = MagicMock()
-        mock_convert.return_value = [mock_image]
-        
+    tesseract_config = []
+
+    mock_image = MagicMock()
+
+    with patch('pdf2ocr.ocr._count_pdf_pages', return_value=1), \
+         patch('pdf2ocr.ocr._render_pdf_pages', return_value=[mock_image]), \
+         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text:
+
         mock_extract_text.return_value = "test text"
-        
-        # Call the function
+
         result_text, result_pages, duration = extract_text_from_pdf(
             test_pdf_path, tesseract_config, "por"
         )
-        
-        # Verify that extract_text_from_image was called with empty config string
+
         mock_extract_text.assert_called_once()
-        args, kwargs = mock_extract_text.call_args
-        
-        assert args[0] == mock_image     # image
-        assert args[1] == "por"          # language
-        assert args[2] == ""             # empty config string (converted from empty list)
+        args, _ = mock_extract_text.call_args
+
+        assert args[0] == mock_image
+        assert args[1] == "por"
+        assert args[2] == ""
 
 
 def test_extract_text_from_pdf_with_none_config():
     """Test that extract_text_from_pdf works with None tesseract_config."""
     test_pdf_path = "test.pdf"
     tesseract_config = None
-    
-    # Mock dependencies
-    with patch('pdf2ocr.ocr.PdfReader') as mock_pdf_reader, \
-         patch('pdf2ocr.ocr.convert_from_path') as mock_convert, \
-         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text, \
-         patch('builtins.open', mock_open()) as mock_file:
-        
-        # Setup mocks
-        mock_pdf = MagicMock()
-        mock_pdf.pages = [MagicMock()]  # 1 page
-        mock_pdf_reader.return_value = mock_pdf
-        
-        mock_image = MagicMock()
-        mock_convert.return_value = [mock_image]
-        
+
+    mock_image = MagicMock()
+
+    with patch('pdf2ocr.ocr._count_pdf_pages', return_value=1), \
+         patch('pdf2ocr.ocr._render_pdf_pages', return_value=[mock_image]), \
+         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text:
+
         mock_extract_text.return_value = "test text"
-        
-        # Call the function
+
         result_text, result_pages, duration = extract_text_from_pdf(
             test_pdf_path, tesseract_config, "por"
         )
-        
-        # Verify that extract_text_from_image was called with empty config string
+
         mock_extract_text.assert_called_once()
-        args, kwargs = mock_extract_text.call_args
-        
-        assert args[0] == mock_image     # image
-        assert args[1] == "por"          # language
-        assert args[2] == ""             # empty config string (None converted to empty)
+        args, _ = mock_extract_text.call_args
+
+        assert args[0] == mock_image
+        assert args[1] == "por"
+        assert args[2] == ""
 
 
 def test_config_get_tesseract_config_default():
@@ -220,42 +187,30 @@ def test_config_get_tesseract_config_layout():
 
 def test_integration_config_to_image_function():
     """Integration test: config from ProcessingConfig flows to extract_text_from_image."""
-    # Create a config with layout preservation (which uses different tesseract config)
     config = ProcessingConfig(
         source_dir="test",
         generate_pdf=True,
         preserve_layout=True
     )
-    
+
     test_pdf_path = "test.pdf"
-    
-    # Mock dependencies
-    with patch('pdf2ocr.ocr.PdfReader') as mock_pdf_reader, \
-         patch('pdf2ocr.ocr.convert_from_path') as mock_convert, \
-         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text, \
-         patch('builtins.open', mock_open()) as mock_file:
-        
-        # Setup mocks
-        mock_pdf = MagicMock()
-        mock_pdf.pages = [MagicMock()]  # 1 page
-        mock_pdf_reader.return_value = mock_pdf
-        
-        mock_image = MagicMock()
-        mock_convert.return_value = [mock_image]
-        
+    mock_image = MagicMock()
+
+    with patch('pdf2ocr.ocr._count_pdf_pages', return_value=1), \
+         patch('pdf2ocr.ocr._render_pdf_pages', return_value=[mock_image]), \
+         patch('pdf2ocr.ocr.extract_text_from_image') as mock_extract_text:
+
         mock_extract_text.return_value = "test text"
-        
-        # Call the function with config from ProcessingConfig
+
         result_text, result_pages, duration = extract_text_from_pdf(
-            test_pdf_path, 
-            config.get_tesseract_config(),  # This should be ["--oem", "1", "--psm", "11"]
+            test_pdf_path,
+            config.get_tesseract_config(),  # ["--oem", "1", "--psm", "11"]
             "por"
         )
-        
-        # Verify that extract_text_from_image was called with the layout-specific config
+
         mock_extract_text.assert_called_once()
-        args, kwargs = mock_extract_text.call_args
-        
-        assert args[0] == mock_image                    # image
-        assert args[1] == "por"                         # language
-        assert args[2] == "--oem 1 --psm 11"          # layout config string 
+        args, _ = mock_extract_text.call_args
+
+        assert args[0] == mock_image
+        assert args[1] == "por"
+        assert args[2] == "--oem 1 --psm 11" 

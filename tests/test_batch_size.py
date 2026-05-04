@@ -34,179 +34,127 @@ def test_batch_size_parameter_validation():
 
 
 @patch('pdf2ocr.ocr.extract_text_from_image')
-@patch('pdf2ocr.ocr.convert_from_path')
-@patch('pdf2ocr.ocr.PdfReader')
-@patch('builtins.open')
-def test_batch_size_none_processes_all_pages(mock_open, mock_pdf_reader, mock_convert, mock_extract_text):
+@patch('pdf2ocr.ocr._render_pdf_pages')
+@patch('pdf2ocr.ocr._count_pdf_pages')
+def test_batch_size_none_processes_all_pages(mock_count, mock_render, mock_extract_text):
     """Test that batch_size=None processes all pages at once."""
-    # Mock PDF with 5 pages
-    mock_pdf = MagicMock()
-    mock_pdf.pages = [MagicMock() for _ in range(5)]
-    mock_pdf_reader.return_value = mock_pdf
-    
-    # Mock convert_from_path to return 5 images
+    mock_count.return_value = 5
+
     mock_images = [MagicMock() for _ in range(5)]
-    mock_convert.return_value = mock_images
-    
-    # Mock file operations
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
-    
-    # Mock extract_text_from_image
+    mock_render.return_value = mock_images
+
     mock_extract_text.return_value = "test text"
-    
-    # Test with batch_size=None
+
     result = extract_text_from_pdf(
         pdf_path="/test/file.pdf",
         tesseract_config=["--oem", "3"],
         lang_code="por",
         batch_size=None
     )
-    
-    # Verify convert_from_path was called once (all pages at once)
-    assert mock_convert.call_count == 1
-    # Verify it was called without first_page and last_page parameters
-    args, kwargs = mock_convert.call_args
-    assert 'first_page' not in kwargs
-    assert 'last_page' not in kwargs
-    
-    # Verify result contains all pages
+
+    # Render called once without page range (first_page/last_page both None)
+    assert mock_render.call_count == 1
+    args, kwargs = mock_render.call_args
+    assert args == ("/test/file.pdf", 400)
+    assert kwargs.get('first_page') is None
+    assert kwargs.get('last_page') is None
+
     text, pages, duration = result
     assert len(pages) == 5
 
 
 @patch('pdf2ocr.ocr.extract_text_from_image')
-@patch('pdf2ocr.ocr.convert_from_path')
-@patch('pdf2ocr.ocr.PdfReader')
-@patch('builtins.open')
-def test_batch_size_with_value_processes_in_batches(mock_open, mock_pdf_reader, mock_convert, mock_extract_text):
+@patch('pdf2ocr.ocr._render_pdf_pages')
+@patch('pdf2ocr.ocr._count_pdf_pages')
+def test_batch_size_with_value_processes_in_batches(mock_count, mock_render, mock_extract_text):
     """Test that batch_size with a value processes pages in batches."""
-    # Mock PDF with 10 pages
-    mock_pdf = MagicMock()
-    mock_pdf.pages = [MagicMock() for _ in range(10)]
-    mock_pdf_reader.return_value = mock_pdf
-    
-    # Mock convert_from_path to return images for each batch
-    mock_convert.side_effect = [
-        [MagicMock() for _ in range(3)],  # First batch: pages 1-3
-        [MagicMock() for _ in range(3)],  # Second batch: pages 4-6
-        [MagicMock() for _ in range(3)],  # Third batch: pages 7-9
-        [MagicMock()],                    # Fourth batch: page 10
+    mock_count.return_value = 10
+
+    mock_render.side_effect = [
+        [MagicMock() for _ in range(3)],  # batch 1: pages 0-2
+        [MagicMock() for _ in range(3)],  # batch 2: pages 3-5
+        [MagicMock() for _ in range(3)],  # batch 3: pages 6-8
+        [MagicMock()],                    # batch 4: page 9
     ]
-    
-    # Mock file operations
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
-    
-    # Mock extract_text_from_image
+
     mock_extract_text.return_value = "test text"
-    
-    # Test with batch_size=3
+
     result = extract_text_from_pdf(
         pdf_path="/test/file.pdf",
         tesseract_config=["--oem", "3"],
         lang_code="por",
         batch_size=3
     )
-    
-    # Verify convert_from_path was called 4 times (for 4 batches)
-    assert mock_convert.call_count == 4
-    
-    # Verify each call had the correct first_page and last_page
+
+    assert mock_render.call_count == 4
+
+    # _render_pdf_pages uses 0-based indices
     expected_calls = [
-        call("/test/file.pdf", dpi=400, first_page=1, last_page=3, use_pdftocairo=True),
-        call("/test/file.pdf", dpi=400, first_page=4, last_page=6, use_pdftocairo=True),
-        call("/test/file.pdf", dpi=400, first_page=7, last_page=9, use_pdftocairo=True),
-        call("/test/file.pdf", dpi=400, first_page=10, last_page=10, use_pdftocairo=True),
+        call("/test/file.pdf", 400, 0, 2),
+        call("/test/file.pdf", 400, 3, 5),
+        call("/test/file.pdf", 400, 6, 8),
+        call("/test/file.pdf", 400, 9, 9),
     ]
-    mock_convert.assert_has_calls(expected_calls)
-    
-    # Verify result contains all pages
+    mock_render.assert_has_calls(expected_calls)
+
     text, pages, duration = result
     assert len(pages) == 10
 
 
 @patch('pdf2ocr.ocr.extract_text_from_image')
-@patch('pdf2ocr.ocr.convert_from_path')
-@patch('pdf2ocr.ocr.PdfReader')
-@patch('builtins.open')
-def test_batch_size_edge_cases(mock_open, mock_pdf_reader, mock_convert, mock_extract_text):
+@patch('pdf2ocr.ocr._render_pdf_pages')
+@patch('pdf2ocr.ocr._count_pdf_pages')
+def test_batch_size_edge_cases(mock_count, mock_render, mock_extract_text):
     """Test batch_size with edge cases."""
-    # Mock PDF with 5 pages
-    mock_pdf = MagicMock()
-    mock_pdf.pages = [MagicMock() for _ in range(5)]
-    mock_pdf_reader.return_value = mock_pdf
-    
-    # Mock file operations
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
-    
-    # Test batch_size larger than total pages
-    mock_convert.return_value = [MagicMock() for _ in range(5)]
-    
-    # Mock extract_text_from_image
+    mock_count.return_value = 5
+    mock_render.return_value = [MagicMock() for _ in range(5)]
     mock_extract_text.return_value = "test text"
-    
+
     result = extract_text_from_pdf(
         pdf_path="/test/file.pdf",
         tesseract_config=["--oem", "3"],
         lang_code="por",
         batch_size=10  # Larger than 5 pages
     )
-    
-    # Should process all pages in one batch
-    assert mock_convert.call_count == 1
-    args, kwargs = mock_convert.call_args
-    assert kwargs['first_page'] == 1
-    assert kwargs['last_page'] == 5
-    
-    # Verify result
+
+    # Should process all pages in one batch (0-based: 0 to 4)
+    assert mock_render.call_count == 1
+    args, kwargs = mock_render.call_args
+    assert args == ("/test/file.pdf", 400, 0, 4)
+
     text, pages, duration = result
     assert len(pages) == 5
 
 
 @patch('pdf2ocr.ocr.extract_text_from_image')
-@patch('pdf2ocr.ocr.convert_from_path')
-@patch('pdf2ocr.ocr.PdfReader')
-@patch('builtins.open')
-def test_batch_size_single_page_batches(mock_open, mock_pdf_reader, mock_convert, mock_extract_text):
+@patch('pdf2ocr.ocr._render_pdf_pages')
+@patch('pdf2ocr.ocr._count_pdf_pages')
+def test_batch_size_single_page_batches(mock_count, mock_render, mock_extract_text):
     """Test batch_size=1 processes one page at a time."""
-    # Mock PDF with 3 pages
-    mock_pdf = MagicMock()
-    mock_pdf.pages = [MagicMock() for _ in range(3)]
-    mock_pdf_reader.return_value = mock_pdf
-    
-    # Mock convert_from_path to return one image per call
-    mock_convert.side_effect = [
-        [MagicMock()],  # Page 1
-        [MagicMock()],  # Page 2
-        [MagicMock()],  # Page 3
+    mock_count.return_value = 3
+    mock_render.side_effect = [
+        [MagicMock()],
+        [MagicMock()],
+        [MagicMock()],
     ]
-    
-    # Mock file operations
-    mock_file = MagicMock()
-    mock_open.return_value.__enter__.return_value = mock_file
-    
-    # Mock extract_text_from_image
     mock_extract_text.return_value = "test text"
-    
+
     result = extract_text_from_pdf(
         pdf_path="/test/file.pdf",
         tesseract_config=["--oem", "3"],
         lang_code="por",
         batch_size=1
     )
-    
-    # Verify convert_from_path was called 3 times
-    assert mock_convert.call_count == 3
-    
-    # Verify each call processed one page
+
+    assert mock_render.call_count == 3
+
+    # 0-based indices
     expected_calls = [
-        call("/test/file.pdf", dpi=400, first_page=1, last_page=1, use_pdftocairo=True),
-        call("/test/file.pdf", dpi=400, first_page=2, last_page=2, use_pdftocairo=True),
-        call("/test/file.pdf", dpi=400, first_page=3, last_page=3, use_pdftocairo=True),
+        call("/test/file.pdf", 400, 0, 0),
+        call("/test/file.pdf", 400, 1, 1),
+        call("/test/file.pdf", 400, 2, 2),
     ]
-    mock_convert.assert_has_calls(expected_calls)
+    mock_render.assert_has_calls(expected_calls)
 
 
 def test_batch_size_parameter_bounds():
@@ -243,47 +191,37 @@ def test_batch_size_passed_to_ocr_function(mock_extract):
 
 
 @patch('subprocess.run')
-@patch('pdf2ocr.converters.pdf.convert_from_path')
+@patch('pdf2ocr.converters.pdf._render_pdf_pages')
+@patch('pdf2ocr.converters.pdf._count_pdf_pages')
 @patch('builtins.open')
 @patch('tempfile.TemporaryDirectory')
-def test_batch_size_in_layout_mode(mock_temp_dir, mock_open, mock_convert, mock_subprocess):
+def test_batch_size_in_layout_mode(mock_temp_dir, mock_open, mock_count, mock_render, mock_subprocess):
     """Test that batch_size works in layout preservation mode."""
-    # Mock temporary directory
     mock_temp_dir.return_value.__enter__.return_value = "/tmp/test"
     mock_temp_dir.return_value.__exit__.return_value = None
-    
-    # Mock file operations
+
     mock_file = MagicMock()
     mock_open.return_value.__enter__.return_value = mock_file
     mock_file.read.return_value = b"fake pdf content"
-    
-    # Mock PDF conversion
-    mock_convert.side_effect = [
+
+    mock_count.return_value = 3
+    mock_render.side_effect = [
         [MagicMock(), MagicMock()],  # First batch: 2 pages
         [MagicMock()],               # Second batch: 1 page
     ]
-    
-    # Mock subprocess (tesseract command)
+
     mock_subprocess.return_value = MagicMock()
-    
+
     config = ProcessingConfig(
-        source_dir="/test/path", 
-        generate_pdf=True, 
+        source_dir="/test/path",
+        generate_pdf=True,
         preserve_layout=True,
         batch_size=2
     )
-    
-    # Mock the PDF reading to return 3 pages
-    with patch('pdf2ocr.converters.pdf.PdfReader') as mock_pdf_reader:
-        mock_pdf = MagicMock()
-        mock_pdf.pages = [MagicMock() for _ in range(3)]
-        mock_pdf_reader.return_value = mock_pdf
-        
-        with patch('pdf2ocr.converters.pdf.setup_logging'), \
-             patch('pdf2ocr.converters.pdf.timing_context'):
-            
-            # The batch_size should be used in the layout mode too
-            assert config.batch_size == 2
+
+    with patch('pdf2ocr.converters.pdf.setup_logging'), \
+         patch('pdf2ocr.converters.pdf.timing_context'):
+        assert config.batch_size == 2
 
 
 def test_batch_size_memory_optimization():

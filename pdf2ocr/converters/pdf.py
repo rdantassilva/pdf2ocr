@@ -1,6 +1,5 @@
 """PDF conversion and processing functionality."""
 
-import io
 import os
 import subprocess
 import sys
@@ -9,8 +8,7 @@ import time
 from concurrent import futures
 from typing import List, Optional, Tuple
 
-from pdf2image import convert_from_path
-from pypdf import PdfReader, PdfWriter
+import fitz
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.pdfgen import canvas
@@ -22,7 +20,12 @@ from pdf2ocr.converters.docx import save_as_docx
 from pdf2ocr.converters.epub import convert_docx_to_epub
 from pdf2ocr.converters.html import save_as_html
 from pdf2ocr.logging_config import log_message, setup_logging
-from pdf2ocr.ocr import extract_text_from_pdf, preprocess_image
+from pdf2ocr.ocr import (
+    _count_pdf_pages,
+    _render_pdf_pages,
+    extract_text_from_pdf,
+    preprocess_image,
+)
 from pdf2ocr.state import is_shutdown_requested
 from pdf2ocr.utils import timing_context
 
@@ -158,9 +161,7 @@ def process_single_layout_pdf(
         total_time = 0.0
 
         # Get total number of pages
-        with open(pdf_path, "rb") as f:
-            pdf = PdfReader(f)
-            total_pages = len(pdf.pages)
+        total_pages = _count_pdf_pages(pdf_path)
 
         # Process each page with OCR
         pdf_pages = []
@@ -178,11 +179,7 @@ def process_single_layout_pdf(
                 try:
                     if config.batch_size is None:
                         # Process all pages at once
-                        pages_batch = convert_from_path(
-                            pdf_path,
-                            dpi=config.dpi,
-                            use_pdftocairo=True,
-                        )
+                        pages_batch = _render_pdf_pages(pdf_path, config.dpi)
 
                         # Process each page
                         for page_num, page_img in enumerate(
@@ -240,13 +237,9 @@ def process_single_layout_pdf(
                                 batch_start + config.batch_size - 1, total_pages
                             )
 
-                            # Convert batch of pages to images
-                            pages_batch = convert_from_path(
-                                pdf_path,
-                                dpi=config.dpi,
-                                first_page=batch_start,
-                                last_page=batch_end,
-                                use_pdftocairo=True,
+                            # Render batch of pages to images (0-based indices)
+                            pages_batch = _render_pdf_pages(
+                                pdf_path, config.dpi, batch_start - 1, batch_end - 1
                             )
 
                             # Process each page in the batch
@@ -313,16 +306,14 @@ def process_single_layout_pdf(
 
             # Merge PDF pages into temporary file
             with timing_context("PDF merging", None) as get_merge_time:
-                writer = PdfWriter()
-                writer.compress = True
-
+                merged_doc = fitz.open()
                 for page_pdf in pdf_pages:
-                    if page_pdf is not None:  # Skip any missing pages
-                        reader = PdfReader(io.BytesIO(page_pdf))
-                        writer.add_page(reader.pages[0])
-
-                with open(temp_pdf_path, "wb") as fout:
-                    writer.write(fout)
+                    if page_pdf is not None:
+                        src = fitz.open("pdf", page_pdf)
+                        merged_doc.insert_pdf(src)
+                        src.close()
+                merged_doc.save(temp_pdf_path)
+                merged_doc.close()
 
             total_time += get_merge_time.duration
 

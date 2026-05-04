@@ -7,17 +7,45 @@ import subprocess
 import sys
 import tempfile
 import time
-from io import BytesIO
 from typing import List, Optional, Tuple
 
-from pdf2image import convert_from_path
+import fitz
 from PIL import Image, ImageFilter, ImageOps
-from pypdf import PdfReader
 from pytesseract import image_to_string
-from reportlab.pdfgen import canvas
 from tqdm import tqdm
 
 from pdf2ocr.logging_config import log_message
+
+
+def _count_pdf_pages(pdf_path: str) -> int:
+    """Return the number of pages in a PDF file."""
+    with fitz.open(pdf_path) as doc:
+        return len(doc)
+
+
+def _render_pdf_pages(
+    pdf_path: str,
+    dpi: int,
+    first_page: Optional[int] = None,
+    last_page: Optional[int] = None,
+) -> List[Image.Image]:
+    """Render PDF pages to PIL Images using PyMuPDF.
+
+    Args:
+        pdf_path: Path to the PDF file
+        dpi: Rendering resolution
+        first_page: 0-based first page index (inclusive), None = 0
+        last_page: 0-based last page index (inclusive), None = last page
+    """
+    mat = fitz.Matrix(dpi / 72, dpi / 72)
+    images: List[Image.Image] = []
+    with fitz.open(pdf_path) as doc:
+        start = first_page if first_page is not None else 0
+        end = (last_page + 1) if last_page is not None else len(doc)
+        for page_idx in range(start, min(end, len(doc))):
+            pix = doc[page_idx].get_pixmap(matrix=mat)
+            images.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
+    return images
 
 
 class OCRError(Exception):
@@ -213,40 +241,6 @@ def clean_text_portuguese(text):
     return re.sub(f"[^{allowed}]", "", text)
 
 
-def convert_image_to_pdf(image: Image.Image) -> PdfReader:
-    """Convert a PIL Image to a PDF.
-
-    Args:
-        image: PIL Image to convert
-
-    Returns:
-        PdfReader: PDF reader object containing the image
-    """
-    temp_file = None
-    try:
-        # Create temporary file for image
-        temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
-        # Save image to temporary file
-        image.save(temp_file.name, format="PNG")
-
-        # Create PDF from image
-        pdf_buffer = BytesIO()
-        c = canvas.Canvas(pdf_buffer)
-        c.setPageSize((image.width, image.height))
-        c.drawImage(temp_file.name, 0, 0, width=image.width, height=image.height)
-        c.showPage()
-        c.save()
-
-        # Return PDF reader
-        pdf_buffer.seek(0)
-        return PdfReader(pdf_buffer)
-
-    finally:
-        # Clean up temporary file
-        if temp_file and os.path.exists(temp_file.name):
-            os.unlink(temp_file.name)
-
-
 def extract_text_from_image(image: Image.Image, lang: str, config: str = "") -> str:
     """Extract text from an image using OCR.
 
@@ -297,8 +291,8 @@ def process_pdf_with_ocr(
     pages = []
 
     try:
-        # Convert PDF to images
-        images = convert_from_path(pdf_path, dpi=dpi, use_pdftocairo=True)
+        # Render PDF pages to images
+        images = _render_pdf_pages(pdf_path, dpi)
 
         # Configure tqdm to write to /dev/null in quiet mode
         tqdm_file = open(os.devnull, "w") if (quiet or summary) else sys.stderr
@@ -363,9 +357,7 @@ def extract_text_from_pdf(
 
     try:
         # Get total number of pages
-        with open(pdf_path, "rb") as f:
-            pdf = PdfReader(f)
-            total_pages = len(pdf.pages)
+        total_pages = _count_pdf_pages(pdf_path)
 
         # Pre-allocate text_pages list with empty strings
         text_pages = [""] * total_pages
@@ -376,11 +368,7 @@ def extract_text_from_pdf(
         try:
             if batch_size is None:
                 # Process all pages at once
-                pages_batch = convert_from_path(
-                    pdf_path,
-                    dpi=dpi,
-                    use_pdftocairo=True,
-                )
+                pages_batch = _render_pdf_pages(pdf_path, dpi)
 
                 # Process each page
                 for page_num, page_img in enumerate(
@@ -414,13 +402,9 @@ def extract_text_from_pdf(
                 ):
                     batch_end = min(batch_start + batch_size - 1, total_pages)
 
-                    # Convert batch of pages to images
-                    pages_batch = convert_from_path(
-                        pdf_path,
-                        dpi=dpi,
-                        first_page=batch_start,
-                        last_page=batch_end,
-                        use_pdftocairo=True,
+                    # Render batch of pages to images (0-based indices)
+                    pages_batch = _render_pdf_pages(
+                        pdf_path, dpi, batch_start - 1, batch_end - 1
                     )
 
                     # Process each page in the batch
