@@ -10,7 +10,7 @@
 <p align="center">
   <a href="https://github.com/rdantassilva/pdf2ocr/stargazers"><img src="https://img.shields.io/github/stars/rdantassilva/pdf2ocr?style=flat" alt="Stars"></a>
   <a href="https://github.com/rdantassilva/pdf2ocr/commits/main"><img src="https://img.shields.io/github/last-commit/rdantassilva/pdf2ocr?style=flat" alt="Last Commit"></a>
-  <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/github/languages/top/rdantassilva/pdf2ocr?style=flat" alt="Language"></a>
+  <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/badge/language-Python-blue?style=flat" alt="Language"></a>
   <a href="https://pypi.org/project/pdf2ocr/"><img src="https://img.shields.io/pypi/v/pdf2ocr?style=flat" alt="PyPI"></a>
   <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/badge/coverage-90%25-brightgreen?style=flat" alt="Coverage"></a>
 </p>
