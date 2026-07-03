@@ -1,9 +1,30 @@
-[![PyPI](https://img.shields.io/pypi/v/pdf2ocr)](https://pypi.org/project/pdf2ocr/)
-[![Coverage Status](https://img.shields.io/badge/coverage-90%25-brightgreen)](https://github.com/rdantassilva/pdf2ocr)
+<p align="center">
+  <strong>pdf2ocr</strong>
+</p>
 
-# pdf2ocr
+<p align="center">
+  A CLI tool to apply OCR on PDF files and export to multiple formats.<br>
+  Built with <a href="https://github.com/tesseract-ocr/tesseract">Tesseract</a>, <a href="https://pymupdf.readthedocs.io/">PyMuPDF</a>, <a href="https://python-docx.readthedocs.io/">python-docx</a>, <a href="https://pillow.readthedocs.io/">Pillow</a>, and <a href="https://scikit-image.org/">scikit-image</a>.
+</p>
 
-A CLI tool to apply OCR on PDF files and export to multiple formats.
+<p align="center">
+  <a href="https://github.com/rdantassilva/pdf2ocr/stargazers"><img src="https://img.shields.io/github/stars/rdantassilva/pdf2ocr?style=flat" alt="Stars"></a>
+  <a href="https://github.com/rdantassilva/pdf2ocr/commits/main"><img src="https://img.shields.io/github/last-commit/rdantassilva/pdf2ocr?style=flat" alt="Last Commit"></a>
+  <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/github/languages/top/rdantassilva/pdf2ocr?style=flat" alt="Language"></a>
+  <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/github/languages/code-size/rdantassilva/pdf2ocr?style=flat" alt="Code Size"></a>
+  <a href="https://pypi.org/project/pdf2ocr/"><img src="https://img.shields.io/pypi/v/pdf2ocr?style=flat" alt="PyPI"></a>
+  <a href="https://github.com/rdantassilva/pdf2ocr"><img src="https://img.shields.io/badge/coverage-90%25-brightgreen?style=flat" alt="Coverage"></a>
+</p>
+
+<p align="center">
+  <a href="#-features">Features</a> ·
+  <a href="#-advanced-image-processing">Image Processing</a> ·
+  <a href="#-quick-install--usage">Install</a> ·
+  <a href="#-usage-examples">Usage</a> ·
+  <a href="#-language-support">Languages</a> ·
+  <a href="#%EF%B8%8F-command-line-options">CLI Options</a> ·
+  <a href="#-license">License</a>
+</p>
 
 ---
 
