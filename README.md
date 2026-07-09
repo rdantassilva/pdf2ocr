@@ -17,6 +17,7 @@
 
 <p align="center">
   <a href="#-features">Features</a> ·
+  <a href="#-quick-usage">Quick Usage</a> ·
   <a href="#-advanced-image-processing">Image Processing</a> ·
   <a href="#-quick-install--usage">Install</a> ·
   <a href="#-usage-examples">Usage</a> ·
@@ -36,6 +37,14 @@
 - 📂 Supports layout-preserving mode for high-fidelity PDF OCR
 - 🖼️ Advanced image enhancement for improved OCR accuracy on distorted documents
 - ⚡ Intelligent preprocessing with noise reduction, contrast optimization, and text sharpening
+
+---
+
+## ⚡ Quick Usage
+
+```bash
+pdf2ocr . --docx --pdf --epub --html
+```
 
 ---
 
