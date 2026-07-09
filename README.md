@@ -42,7 +42,7 @@
 
 ## ⚡ Quick Usage
 
-Runs OCR on all PDF files in the current directory, exporting to multiple formats using parallel processing (`--workers 2` default):
+Runs OCR on all PDF files in the current directory, exporting to multiple formats using parallel processing (default) [--workers 2]:
 
 ```bash
 pdf2ocr . --docx --pdf --epub --html
